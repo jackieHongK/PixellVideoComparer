@@ -857,10 +857,10 @@
     }
 
     .playbar {
-      padding: 7px 10px;
+      padding: 6px 8px;
       gap: 8px;
       background: rgba(25, 28, 31, 0.94);
-      border-top: 1px solid rgba(201, 201, 205, 0.32);
+      border-top: 1px solid rgba(201, 201, 205, 0.28);
     }
 
     .playbar-label {
@@ -884,6 +884,24 @@
       color: #f4f4f4;
       transition: opacity 0.2s;
     }
+    .playbar button {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .playbar .play-toggle {
+      font-size: 11px;
+      padding-left: 1px;
+    }
+    .playbar .fullscreen-toggle {
+      font-size: 14px;
+    }
 
     .playbar button:hover,
     .capture-button:hover {
@@ -892,7 +910,7 @@
 
     .playbar input[type=range] {
       height: 4px;
-      background: rgba(244, 244, 244, 0.3);
+      background: rgba(244, 244, 244, 0.2);
     }
 
     .playbar input[type=range]::-webkit-slider-thumb {
@@ -917,52 +935,53 @@
       top: 10px;
       right: 12px;
       gap: 8px;
-      padding: 6px 8px;
+      padding: 5px 6px;
       border-radius: 9999px;
-      border: 1px solid rgba(244, 244, 244, 0.32);
-      background: rgba(25, 28, 31, 0.84);
+      border: 1px solid rgba(244, 244, 244, 0.24);
+      background: rgba(25, 28, 31, 0.72);
       backdrop-filter: blur(8px);
       align-items: center;
       box-shadow: none;
     }
 
     .layout-select-wrap {
-      height: 30px;
-      border-radius: 9999px;
-      border: 1px solid rgba(244, 244, 244, 0.3);
-      background: rgba(244, 244, 244, 0.1);
-      padding: 0 8px;
+      height: auto;
+      border: 0;
+      background: transparent;
+      padding: 0;
       color: #f4f4f4;
+      gap: 6px;
     }
 
     .layout-select-label {
-      color: #f4f4f4;
-      font-size: 11px;
-      letter-spacing: 0.16px;
-      font-weight: 500;
+      display: none;
     }
 
     .layout-select {
-      height: 24px;
+      height: 30px;
       border-radius: 9999px;
       border: 1px solid rgba(244, 244, 244, 0.32);
-      background: #191c1f;
+      background: rgba(25, 28, 31, 0.95);
       color: #ffffff;
-      font-size: 11px;
+      font-size: 13px;
+      font-weight: 600;
       letter-spacing: 0.16px;
+      padding: 0 30px 0 12px;
+      min-width: 78px;
     }
 
     .capture-button {
-      min-width: 84px;
+      min-width: 86px;
       height: 30px;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       letter-spacing: 0.16px;
+      padding: 0 16px;
     }
 
     .help-icon {
-      width: 26px;
-      height: 26px;
+      width: 30px;
+      height: 30px;
       border-radius: 9999px;
       border: 2px solid #f4f4f4;
       background: rgba(244, 244, 244, 0.1);
@@ -1594,7 +1613,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       };
     });
     const timelineActive = controlSets.map(()=>false);
-    const TIMELINE_BASE_BG='rgba(255,255,255,0.22)';
+    const TIMELINE_BASE_BG='rgba(244,244,244,0.16)';
     const SPEED_AVG_WINDOW_MS = 60000;
     const ZOOM_MIN = 1;
     const ZOOM_MAX = 50;
@@ -3054,7 +3073,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       }
       segments.sort((a,b)=>a.startPercent-b.startPercent);
       const base=TIMELINE_BASE_BG;
-      const bufferColor='rgba(61,166,255,0.55)';
+      const bufferColor='rgba(201,201,205,0.5)';
       let current=0;
       const parts=[];
       segments.forEach(seg=>{
