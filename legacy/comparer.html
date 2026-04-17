@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>비디오 비교 앱 (HLS 완전 버전)</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      width: 100vw;
+      height: 100vh;
+    }
+    .video-box {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #222;
+      background: #000;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      transition: transform 0.1s linear;
+      pointer-events: none;
+    }
+    .filename-label {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #bbb;
+      z-index: 5;
+      user-select: none;
+      pointer-events: none;
+    }
+    .corner-number {
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      font-size: 36px;
+      font-weight: bold;
+      color: rgba(255,255,255,0.6);
+      text-shadow: 0 0 5px rgba(0,0,0,0.8);
+      z-index: 5;
+      user-select: none;
+      pointer-events: none;
+    }
+    .input-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(20,20,20,0.9);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      width: 220px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 6;
+    }
+    .video-box:hover:not(.loaded) .input-modal {
+      display: flex;
+    }
+    .drop-zone {
+      border: 2px dashed #555;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      color: #aaa;
+      cursor: pointer;
+      background: rgba(255,255,255,0.05);
+      transition: border-color 0.2s;
+    }
+    .drop-zone:hover { border-color: #0af; color: #0af; }
+    input.url-input {
+      width: 100%;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #111;
+      color: #eee;
+      font-size: 13px;
+    }
+    .video-box.loaded { cursor: zoom-in; }
+    .help {
+      position: fixed;
+      top: 8px;
+      right: 10px;
+      font-size: 12px;
+      color: #bbb;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 8px;
+      border-radius: 6px;
+      opacity: 0.5;
+      transition: opacity 0.3s;
+      user-select: none;
+      z-index: 10;
+    }
+    .help:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <!-- 4개의 비디오 컨테이너 -->
+    <div class="video-box" id="box1">
+      <div class="filename-label" id="label1"></div>
+      <div class="corner-number">1</div>
+      <video id="video1"></video>
+      <div class="input-modal">
+        <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
+        <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+        <input type="file" accept="video/*" style="display:none" />
+      </div>
+    </div>
+    <div class="video-box" id="box2">
+      <div class="filename-label" id="label2"></div>
+      <div class="corner-number">2</div>
+      <video id="video2"></video>
+      <div class="input-modal">
+        <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
+        <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+        <input type="file" accept="video/*" style="display:none" />
+      </div>
+    </div>
+    <div class="video-box" id="box3">
+      <div class="filename-label" id="label3"></div>
+      <div class="corner-number">3</div>
+      <video id="video3"></video>
+      <div class="input-modal">
+        <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
+        <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+        <input type="file" accept="video/*" style="display:none" />
+      </div>
+    </div>
+    <div class="video-box" id="box4">
+      <div class="filename-label" id="label4"></div>
+      <div class="corner-number">4</div>
+      <video id="video4"></video>
+      <div class="input-modal">
+        <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
+        <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+        <input type="file" accept="video/*" style="display:none" />
+      </div>
+    </div>
+  </div>
+
+  <div class="help">
+    ⎵ Space: 재생/정지<br>
+    R: 타임싱크<br>
+    F: 전체화면(전체)<br>
+    1–4: 해당 화면 전체화면<br>
+    ← / → : 프레임 이동<br>
+    ⇧ + ← / → : 10프레임 이동<br>
+    ⇧ + < / > : 재생속도 조절<br>
+    🖱 휠: 확대/축소
+  </div>
+
+  <script>
+    const videos = [1, 2, 3, 4].map(i => document.getElementById("video" + i));
+    const boxes = [1, 2, 3, 4].map(i => document.getElementById("box" + i));
+    const labels = [1, 2, 3, 4].map(i => document.getElementById("label" + i));
+    let isPlaying = false, zoom = 2, zoomedIn = false;
+
+    boxes.forEach((box, i) => {
+      const video = videos[i];
+      const label = labels[i];
+      const dropZone = box.querySelector(".drop-zone");
+      const fileInput = box.querySelector('input[type=file]');
+      const urlInput = box.querySelector(".url-input");
+
+      dropZone.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", e => handleFile(e.target.files[0], video, label, box));
+
+      urlInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          const url = e.target.value.trim();
+          if (url) handleURL(url, video, label, box);
+        }
+      });
+
+      box.addEventListener("dragover", e => e.preventDefault());
+      box.addEventListener("drop", e => {
+        e.preventDefault();
+        const dt = e.dataTransfer;
+        if (dt.files.length > 0) handleFile(dt.files[0], video, label, box);
+        else {
+          const url = dt.getData("text") || dt.getData("text/plain");
+          if (url) handleURL(url.trim(), video, label, box);
+        }
+      });
+
+      box.addEventListener("mousemove", e => handleZoomMove(e, box));
+      box.addEventListener("wheel", e => {
+        if (!box.classList.contains("loaded")) return;
+        e.preventDefault();
+        zoom += e.deltaY * -0.01;
+        zoom = Math.min(Math.max(zoom, 1), 5);
+        applyZoom(true);
+      });
+      box.addEventListener("click", () => {
+        if (!box.classList.contains("loaded")) return;
+        zoomedIn = !zoomedIn;
+        box.style.cursor = zoomedIn ? "zoom-out" : "zoom-in";
+        applyZoom(zoomedIn);
+      });
+    });
+
+    function handleFile(file, video, label, box) {
+      if (file && file.type.startsWith("video/")) {
+        const url = URL.createObjectURL(file);
+        video.src = url;
+        video.loop = true;
+        video.play();
+        label.textContent = file.name;
+        box.classList.add("loaded");
+      }
+    }
+
+    function handleURL(url, video, label, box) {
+      label.textContent = url;
+      box.classList.add("loaded");
+      if (url.endsWith(".m3u8")) {
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = url;
+          video.play();
+        } else alert("HLS 재생을 지원하지 않는 브라우저입니다.");
+      } else {
+        video.src = url;
+        video.play();
+      }
+    }
+
+    function handleZoomMove(e, box) {
+      const rect = box.getBoundingClientRect();
+      const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+      videos.forEach(v => (v.style.transformOrigin = `${xPercent}% ${yPercent}%`));
+    }
+    function applyZoom(active) {
+      videos.forEach(v => v.style.transform = active ? `scale(${zoom})` : "scale(1)");
+    }
+
+    // 🔹 단축키 제어
+    document.addEventListener("keydown", e => {
+      const k = e.key.toLowerCase();
+      if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+      else if (k === "r") syncAll();
+      else if (k === "f") toggleFullscreen();
+      else if (["1","2","3","4"].includes(k)) toggleFullscreen(boxes[parseInt(k)-1]);
+      else if (k === "arrowright" || k === "arrowleft") stepFrames(e.shiftKey, k === "arrowright");
+      else if (k === ">" || k === ".") adjustSpeed(0.1);
+      else if (k === "<" || k === ",") adjustSpeed(-0.1);
+    });
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      videos.forEach(v => isPlaying ? v.play() : v.pause());
+    }
+    function syncAll() {
+      const t = videos[0].currentTime;
+      videos.forEach((v,i) => { if (i>0 && v.src) v.currentTime = t; });
+    }
+    function toggleFullscreen(target = document.documentElement) {
+      if (!document.fullscreenElement) target.requestFullscreen();
+      else document.exitFullscreen();
+    }
+    function stepFrames(shift, forward) {
+      const step = (shift ? 10 : 1) / 30;
+      videos.forEach(v => {
+        if (!v.paused) v.pause();
+        v.currentTime += forward ? step : -step;
+      });
+    }
+    function adjustSpeed(delta) {
+      videos.forEach(v => {
+        v.playbackRate = Math.min(Math.max(v.playbackRate + delta, 0.1), 4);
+      });
+    }
+  </script>
+</body>
+</html>
