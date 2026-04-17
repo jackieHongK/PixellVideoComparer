@@ -792,6 +792,319 @@
     .metric-chip strong { color: #8fd3ff; font-size: 12px; }
     .metric-chip span { font-size: 13px; color: #f3fbff; }
     .metric-chip small { font-size: 11px; color: #9ecdf5; }
+
+    :root {
+      --bg: #0a0a0b;
+      --panel: #121316;
+      --panel-2: #181a1f;
+      --border: #2a2e36;
+      --border-soft: #22252c;
+      --text: #f4f6fb;
+      --text-dim: #a0a8b8;
+      --accent: #dfe6f6;
+      --radius: 12px;
+      --radius-sm: 10px;
+      --shadow: 0 14px 40px rgba(0, 0, 0, 0.38);
+    }
+
+    html, body {
+      background:
+        radial-gradient(900px 320px at 80% -20%, rgba(119, 132, 168, 0.2), transparent 60%),
+        radial-gradient(760px 300px at 0% 0%, rgba(89, 102, 138, 0.12), transparent 62%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Pretendard", "Inter", "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    .app {
+      padding: 10px;
+      box-sizing: border-box;
+      gap: 10px;
+    }
+
+    .grid {
+      gap: 10px;
+    }
+
+    .video-column {
+      min-width: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .video-box {
+      border: none;
+      background: #060708;
+    }
+
+    .filename-label {
+      top: 10px;
+      left: 10px;
+      background: rgba(6, 8, 12, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #d8dff0;
+      font-size: 11px;
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+    }
+
+    .corner-number {
+      font-size: 28px;
+      color: rgba(233, 238, 251, 0.28);
+      text-shadow: none;
+    }
+
+    .playbar {
+      gap: 10px;
+      padding: 8px 10px;
+      background: linear-gradient(180deg, rgba(22, 24, 29, 0.95), rgba(17, 19, 24, 0.95));
+      border-top: 1px solid var(--border);
+    }
+
+    .playbar-label {
+      width: 32px;
+      color: #d5dced;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      line-height: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .playbar button,
+    .capture-button {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: #e4eaf9;
+      border-radius: var(--radius-sm);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .playbar button:hover,
+    .capture-button:hover {
+      background: #20232b;
+      border-color: #3a404e;
+      color: #ffffff;
+    }
+
+    .playbar input[type=range] {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .playbar input[type=range]::-webkit-slider-thumb {
+      width: 13px;
+      height: 13px;
+      background: #f2f5fd;
+      box-shadow: 0 0 0 2px rgba(17,19,24,0.8);
+    }
+    .playbar input[type=range]::-moz-range-thumb {
+      width: 13px;
+      height: 13px;
+      background: #f2f5fd;
+      box-shadow: 0 0 0 2px rgba(17,19,24,0.8);
+    }
+
+    .playbar-time {
+      color: var(--text-dim);
+      min-width: 96px;
+      font-size: 10px;
+    }
+
+    .top-controls {
+      top: 16px;
+      right: 18px;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 14px;
+      background: rgba(17, 19, 24, 0.82);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      align-items: center;
+    }
+
+    .layout-select-wrap {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      border-radius: var(--radius-sm);
+      color: #d9e0f1;
+      height: 30px;
+    }
+    .layout-select-label {
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    .layout-select {
+      border: 1px solid #353a45;
+      background: #101217;
+      color: #ecf0fb;
+      border-radius: 8px;
+      height: 24px;
+    }
+
+    .capture-button {
+      height: 30px;
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 72px;
+    }
+
+    .help-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: #dce3f5;
+      pointer-events: auto;
+      cursor: help;
+    }
+    .help:hover .help-icon {
+      color: #ffffff;
+      border-color: #3a404e;
+      background: #20232b;
+    }
+    .help-tooltip {
+      top: 36px;
+      right: 0;
+      width: 255px;
+      background: rgba(15,17,21,0.98);
+      border: 1px solid #323743;
+      border-radius: 12px;
+      color: #c8d1e6;
+      font-size: 11px;
+      line-height: 1.6;
+      box-shadow: var(--shadow);
+      padding: 12px 14px;
+      pointer-events: auto;
+    }
+
+    .monitor-panel {
+      top: 78px;
+      background: rgba(14, 16, 20, 0.96);
+      border: 1px solid #2b3039;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      color: #e8edf8;
+      padding: 18px 20px 22px;
+    }
+    .monitor-header h2 {
+      color: #f0f4ff;
+      font-size: 18px;
+      font-weight: 650;
+    }
+    .monitor-close {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      width: 30px;
+      height: 30px;
+      background: #181b22;
+      color: #d5deef;
+      font-size: 16px;
+    }
+    .monitor-close:hover {
+      background: #222630;
+      border-color: #3c4352;
+    }
+    .monitor-section {
+      border-bottom: 1px solid #242932;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+    }
+    .monitor-section h3 {
+      color: #f0f4ff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .metric {
+      background: #171a20;
+      border: 1px solid #2a2f38;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .metric-title {
+      color: #e8edf8;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .metric-desc {
+      color: #99a3b8;
+      font-size: 11px;
+    }
+    .metric-label {
+      color: #dee6f8;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      font-size: 11px;
+    }
+    .metric-card canvas {
+      background: #111318;
+      border: 1px solid #242932;
+      border-radius: 8px;
+    }
+    .metric-value {
+      color: #f2f6ff;
+    }
+    .metric-details {
+      color: #9ca6bb;
+      font-size: 11px;
+    }
+    .metric-inline .metric-chip {
+      background: #171a20;
+      border: 1px solid #2a2f38;
+      border-radius: 10px;
+    }
+    .metric-chip strong {
+      color: #dbe4f7;
+    }
+    .metric-chip span,
+    .metric-chip small {
+      color: #a9b3c9;
+    }
+
+    /* Hide removed playlist UI remnants */
+    .playlist-overlay,
+    .playlist-button,
+    .multi-add-btn,
+    .bulk-modal {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        padding: 8px;
+        gap: 8px;
+      }
+      .grid {
+        gap: 8px;
+      }
+      .top-controls {
+        position: static;
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
+      .monitor-panel {
+        top: 8px;
+        width: calc(100vw - 16px);
+        max-height: calc(100vh - 16px);
+      }
+      .playbar {
+        flex-wrap: wrap;
+      }
+      .playbar-time {
+        margin-left: auto;
+      }
+    }
   </style>
 </head>
 <body>
