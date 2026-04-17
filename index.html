@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HLS 실시간 비교 뷰어</title>
+  <title>HLS Real-time Comparison Viewer</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     html, body {
@@ -811,35 +811,21 @@
           <video id="video1"></video>
           <img id="image1" class="media-image" alt="comparison image 1" />
           <div class="input-modal">
-            <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
-            <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+            <div class="drop-zone">🎬 Drag a file here or click</div>
+            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
             <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-            <button type="button" class="multi-add-btn" data-player="0">여러파일추가</button>
           </div>
         </div>
         <div class="playbar" data-player="0">
           <span class="playbar-label">P1</span>
-          <button class="play-toggle" type="button" aria-label="재생/일시정지">▶</button>
+          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
           <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
           <div class="playbar-time">
             <span class="time-current">00:00</span>
             <span class="time-sep">/</span>
             <span class="time-total">00:00</span>
           </div>
-          <button class="fullscreen-toggle" type="button" aria-label="전체화면">⛶</button>
-        </div>
-        <div class="bulk-modal" data-player="0" aria-hidden="true">
-          <div class="bulk-header">
-            <h3>플레이어 1 플레이목록 구성</h3>
-            <button class="bulk-close" type="button" aria-label="닫기">×</button>
-          </div>
-          <div class="bulk-drop" tabindex="0">파일을 여러 개 드래그하거나 클릭하여 추가할 수 있습니다.</div>
-          <div class="bulk-rows"></div>
-          <div class="bulk-footer">
-            <button class="bulk-add-row" type="button">행 추가</button>
-            <button class="bulk-apply" type="button">플레이목록 추가하기</button>
-          </div>
-          <input type="file" class="bulk-file-input" multiple accept="video/*,image/*,.mov,.exr" style="display:none" />
+          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
         </div>
       </div>
 
@@ -855,35 +841,21 @@
           <video id="video2"></video>
           <img id="image2" class="media-image" alt="comparison image 2" />
           <div class="input-modal">
-            <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
-            <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+            <div class="drop-zone">🎬 Drag a file here or click</div>
+            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
             <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-            <button type="button" class="multi-add-btn" data-player="1">여러파일추가</button>
           </div>
         </div>
         <div class="playbar" data-player="1">
           <span class="playbar-label">P2</span>
-          <button class="play-toggle" type="button" aria-label="재생/일시정지">▶</button>
+          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
           <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
           <div class="playbar-time">
             <span class="time-current">00:00</span>
             <span class="time-sep">/</span>
             <span class="time-total">00:00</span>
           </div>
-          <button class="fullscreen-toggle" type="button" aria-label="전체화면">⛶</button>
-        </div>
-        <div class="bulk-modal" data-player="1" aria-hidden="true">
-          <div class="bulk-header">
-            <h3>플레이어 2 플레이목록 구성</h3>
-            <button class="bulk-close" type="button" aria-label="닫기">×</button>
-          </div>
-          <div class="bulk-drop" tabindex="0">파일을 여러 개 드래그하거나 클릭하여 추가할 수 있습니다.</div>
-          <div class="bulk-rows"></div>
-          <div class="bulk-footer">
-            <button class="bulk-add-row" type="button">행 추가</button>
-            <button class="bulk-apply" type="button">플레이목록 추가하기</button>
-          </div>
-          <input type="file" class="bulk-file-input" multiple accept="video/*,image/*,.mov,.exr" style="display:none" />
+          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
         </div>
       </div>
 
@@ -899,35 +871,21 @@
           <video id="video3"></video>
           <img id="image3" class="media-image" alt="comparison image 3" />
           <div class="input-modal">
-            <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
-            <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+            <div class="drop-zone">🎬 Drag a file here or click</div>
+            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
             <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-            <button type="button" class="multi-add-btn" data-player="2">여러파일추가</button>
           </div>
         </div>
         <div class="playbar" data-player="2">
           <span class="playbar-label">P3</span>
-          <button class="play-toggle" type="button" aria-label="재생/일시정지">▶</button>
+          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
           <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
           <div class="playbar-time">
             <span class="time-current">00:00</span>
             <span class="time-sep">/</span>
             <span class="time-total">00:00</span>
           </div>
-          <button class="fullscreen-toggle" type="button" aria-label="전체화면">⛶</button>
-        </div>
-        <div class="bulk-modal" data-player="2" aria-hidden="true">
-          <div class="bulk-header">
-            <h3>플레이어 3 플레이목록 구성</h3>
-            <button class="bulk-close" type="button" aria-label="닫기">×</button>
-          </div>
-          <div class="bulk-drop" tabindex="0">파일을 여러 개 드래그하거나 클릭하여 추가할 수 있습니다.</div>
-          <div class="bulk-rows"></div>
-          <div class="bulk-footer">
-            <button class="bulk-add-row" type="button">행 추가</button>
-            <button class="bulk-apply" type="button">플레이목록 추가하기</button>
-          </div>
-          <input type="file" class="bulk-file-input" multiple accept="video/*,image/*,.mov,.exr" style="display:none" />
+          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
         </div>
       </div>
 
@@ -943,35 +901,21 @@
           <video id="video4"></video>
           <img id="image4" class="media-image" alt="comparison image 4" />
           <div class="input-modal">
-            <div class="drop-zone">🎬 파일을 드래그하거나 클릭</div>
-            <input class="url-input" type="text" placeholder="URL (.m3u8) 입력 후 Enter" />
+            <div class="drop-zone">🎬 Drag a file here or click</div>
+            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
             <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-            <button type="button" class="multi-add-btn" data-player="3">여러파일추가</button>
           </div>
         </div>
         <div class="playbar" data-player="3">
           <span class="playbar-label">P4</span>
-          <button class="play-toggle" type="button" aria-label="재생/일시정지">▶</button>
+          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
           <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
           <div class="playbar-time">
             <span class="time-current">00:00</span>
             <span class="time-sep">/</span>
             <span class="time-total">00:00</span>
           </div>
-          <button class="fullscreen-toggle" type="button" aria-label="전체화면">⛶</button>
-        </div>
-        <div class="bulk-modal" data-player="3" aria-hidden="true">
-          <div class="bulk-header">
-            <h3>플레이어 4 플레이목록 구성</h3>
-            <button class="bulk-close" type="button" aria-label="닫기">×</button>
-          </div>
-          <div class="bulk-drop" tabindex="0">파일을 여러 개 드래그하거나 클릭하여 추가할 수 있습니다.</div>
-          <div class="bulk-rows"></div>
-          <div class="bulk-footer">
-            <button class="bulk-add-row" type="button">행 추가</button>
-            <button class="bulk-apply" type="button">플레이목록 추가하기</button>
-          </div>
-          <input type="file" class="bulk-file-input" multiple accept="video/*,image/*,.mov,.exr" style="display:none" />
+          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
         </div>
       </div>
     </div>
@@ -979,71 +923,54 @@
 
   <div class="top-controls">
     <label class="layout-select-wrap" for="compareLayoutSelect">
-      <span class="layout-select-label">레이아웃</span>
-      <select class="layout-select" id="compareLayoutSelect" aria-label="비교 레이아웃 선택">
-        <option value="1x2">1행 2열</option>
-        <option value="2x2">2행 2열</option>
-        <option value="1x4">1행 4열</option>
-        <option value="1x3">1행 3열</option>
+      <span class="layout-select-label">Layout</span>
+      <select class="layout-select" id="compareLayoutSelect" aria-label="Select comparison layout">
+        <option value="1x2">1x2</option>
+        <option value="2x2">2x2</option>
+        <option value="1x4">1x4</option>
+        <option value="1x3">1x3</option>
       </select>
     </label>
-    <button class="capture-button" id="captureStillButton" type="button" aria-label="현재 프레임 저장">캡처</button>
-    <button class="playlist-button" id="playlistToggle" type="button" aria-label="플레이목록 보기">🎞</button>
+    <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
     <div class="help">
       <div class="help-icon">?</div>
       <div class="help-tooltip">
-        ⎵ Space: 재생/정지<br>
-        R: 타임싱크<br>
-        0~9: 전체 길이의 0~90% 위치로 이동<br>
-        - : 최신 버퍼 구간으로 이동<br>
-        S: 좌/우 50% 크롭 토글<br>
-        M: 모니터링 패널 토글<br>
-        F: 전체화면(전체)<br>
-        ← / → : 프레임 이동<br>
-        ⇧ + ← / → : 10프레임 이동<br>
-        ⇧ + < / > : 재생속도 조절<br>
-        C: 현재 프레임 PNG 저장<br>
-        Ctrl + 1~5: 해당 플레이목록 재생<br>
-        🖱 휠: 확대/축소
+        ⎵ Space: Play/Pause<br>
+        R: Time Sync<br>
+        0~9: Jump to 0-90% of timeline<br>
+        - : Jump to latest buffered segment<br>
+        S: Toggle left/right 50% crop<br>
+        M: Toggle monitoring panel<br>
+        F: Fullscreen (window)<br>
+        ← / → : Step frame<br>
+        ⇧ + ← / → : Step 10 frames<br>
+        ⇧ + < / > : Adjust playback speed<br>
+        C: Save current frame as PNG<br>
+        🖱 Wheel: Zoom in/out
       </div>
     </div>
   </div>
-
-  <div class="playlist-overlay" id="playlistOverlay" aria-hidden="true">
-    <div class="playlist-header">
-      <h3>플레이 목록</h3>
-      <div class="playlist-controls">
-        <button class="playlist-edit-btn" data-player="0" type="button">P1 편집</button>
-        <button class="playlist-edit-btn" data-player="1" type="button">P2 편집</button>
-        <button class="playlist-edit-btn extra-player" data-player="2" type="button">P3 편집</button>
-        <button class="playlist-edit-btn extra-player" data-player="3" type="button">P4 편집</button>
-        <button class="playlist-close" id="playlistClose" type="button">닫기</button>
-      </div>
-    </div>
-    <div class="playlist-body" id="playlistBody"></div>
-  </div>
-
 
   <div class="monitor-panel" id="monitorPanel" aria-hidden="true">
     <div class="monitor-header">
-      <h2>실시간 모니터링</h2>
-      <button class="monitor-close" type="button" aria-label="모니터링 닫기">×</button>
+      <h2>Real-time Monitoring</h2>
+      <button class="monitor-close" type="button" aria-label="Close monitoring panel">×</button>
     </div>
 
 
     <div class="monitor-section">
-      <h3>네트워크 지표</h3>
+      <h3>Network Metrics</h3>
       <div class="metric-group">
         <div class="metric">
-          <div class="metric-title">세그먼트 다운로드 속도 (Mbps)</div>
-          <div class="metric-desc">각 TS 조각이 네트워크를 통해 모두 내려오는 데 걸린 시간과 바이트 크기로 계산한 평균 전송 속도입니다. (다운로드 시간 = 첫 바이트 수신 이후 완료까지)</div>
+          <div class="metric-title">Segment Download Speed (Mbps)</div>
+          <div class="metric-desc">Average transfer speed calculated from segment bytes and download duration (from first byte to completion).</div>
           <div class="metric-pair">
             <div class="metric-card">
               <div class="metric-label">1</div>
               <div>
                 <canvas id="speedGraph1" width="200" height="60"></canvas>
                 <div class="metric-value" id="speedValue1">-</div>
-                <div class="metric-details">60초 평균 · 최근: <span id="speedInstant1">-</span></div>
+                <div class="metric-details">60s avg · latest: <span id="speedInstant1">-</span></div>
               </div>
             </div>
             <div class="metric-card">
@@ -1051,7 +978,7 @@
               <div>
                 <canvas id="speedGraph2" width="200" height="60"></canvas>
                 <div class="metric-value" id="speedValue2">-</div>
-                <div class="metric-details">60초 평균 · 최근: <span id="speedInstant2">-</span></div>
+                <div class="metric-details">60s avg · latest: <span id="speedInstant2">-</span></div>
               </div>
             </div>
           </div>
@@ -1059,15 +986,15 @@
 
 
         <div class="metric">
-          <div class="metric-title">세그먼트 다운로드 지연 (초)</div>
-          <div class="metric-desc">HLS 조각 요청을 보낸 시점부터 첫 바이트가 도착하기까지의 왕복 지연 시간입니다. 네트워크 RTT와 CDN 응답 속도를 파악할 수 있습니다.</div>
+          <div class="metric-title">Segment Download Latency (sec)</div>
+          <div class="metric-desc">Round-trip latency from segment request to first byte. Useful for RTT/CDN responsiveness checks.</div>
           <div class="metric-pair">
             <div class="metric-card">
               <div class="metric-label">1</div>
               <div>
                 <canvas id="latencyGraph1" width="200" height="60"></canvas>
                 <div class="metric-value" id="latencyValue1">-</div>
-                <div class="metric-details">요청~첫 바이트 기준</div>
+                <div class="metric-details">Request to first byte</div>
               </div>
             </div>
             <div class="metric-card">
@@ -1075,7 +1002,7 @@
               <div>
                 <canvas id="latencyGraph2" width="200" height="60"></canvas>
                 <div class="metric-value" id="latencyValue2">-</div>
-                <div class="metric-details">요청~첫 바이트 기준</div>
+                <div class="metric-details">Request to first byte</div>
               </div>
             </div>
           </div>
@@ -1083,8 +1010,8 @@
 
 
         <div class="metric">
-          <div class="metric-title">ABR 추정 대역폭 (Mbps)</div>
-          <div class="metric-desc">Hls.js 가 내부적으로 추산한 네트워크 가용 대역폭 값입니다. 다음 품질 레벨 선택에 활용되는 추정치입니다.</div>
+          <div class="metric-title">ABR Estimated Bandwidth (Mbps)</div>
+          <div class="metric-desc">Estimated available bandwidth from Hls.js, used for next quality-level selection.</div>
           <div class="metric-pair">
             <div class="metric-card">
               <div class="metric-label">1</div>
@@ -1109,18 +1036,18 @@
 
 
     <div class="monitor-section">
-      <h3>버퍼 &amp; 재생 상태</h3>
+      <h3>Buffer &amp; Playback Status</h3>
       <div class="metric-group">
         <div class="metric">
-          <div class="metric-title">남은 버퍼 길이 (초)</div>
-          <div class="metric-desc">현재 재생 위치 이후 플레이어가 확보해 둔 미디어 버퍼 길이입니다. 버퍼가 짧으면 끊김이 발생할 수 있습니다.</div>
+          <div class="metric-title">Remaining Buffer (sec)</div>
+          <div class="metric-desc">Buffered media duration ahead of the current playhead. Low values may cause stalling.</div>
           <div class="metric-pair">
             <div class="metric-card">
               <div class="metric-label">1</div>
               <div>
                 <canvas id="bufferGraph1" width="200" height="60"></canvas>
                 <div class="metric-value" id="bufferValue1">-</div>
-                <div class="metric-details">현재 시점 대비</div>
+                <div class="metric-details">Relative to current playhead</div>
               </div>
             </div>
             <div class="metric-card">
@@ -1128,7 +1055,7 @@
               <div>
                 <canvas id="bufferGraph2" width="200" height="60"></canvas>
                 <div class="metric-value" id="bufferValue2">-</div>
-                <div class="metric-details">현재 시점 대비</div>
+                <div class="metric-details">Relative to current playhead</div>
               </div>
             </div>
           </div>
@@ -1136,38 +1063,38 @@
 
 
         <div class="metric">
-          <div class="metric-title">재생 속도 &amp; 스톨</div>
-          <div class="metric-desc">현재 재생 배속과 끊김(Waiting/Stalled) 발생 횟수·누적 시간입니다. 재생이 멈추면 자동으로 계측됩니다.</div>
+          <div class="metric-title">Playback Rate &amp; Stalls</div>
+          <div class="metric-desc">Current playback speed and waiting/stalled count with cumulative duration.</div>
           <div class="metric-inline">
             <div class="metric-chip">
-              <strong>Player 1 재생 속도</strong>
+              <strong>Player 1 Playback Rate</strong>
               <span id="playbackValue1">-</span>
             </div>
             <div class="metric-chip">
-              <strong>Player 2 재생 속도</strong>
+              <strong>Player 2 Playback Rate</strong>
               <span id="playbackValue2">-</span>
             </div>
             <div class="metric-chip">
-              <strong>Player 1 스톨</strong>
-              <span><span id="stallValue1">0회</span> · <span id="stallDuration1">0.0초</span></span>
+              <strong>Player 1 Stalls</strong>
+              <span><span id="stallValue1">0 times</span> · <span id="stallDuration1">0.0 sec</span></span>
             </div>
             <div class="metric-chip">
-              <strong>Player 2 스톨</strong>
-              <span><span id="stallValue2">0회</span> · <span id="stallDuration2">0.0초</span></span>
+              <strong>Player 2 Stalls</strong>
+              <span><span id="stallValue2">0 times</span> · <span id="stallDuration2">0.0 sec</span></span>
             </div>
           </div>
         </div>
 
         <div class="metric">
-          <div class="metric-title">조각 수신 → 화면 출력 지연 (초)</div>
-          <div class="metric-desc">TS 조각이 버퍼에 기록된 순간부터 해당 조각이 실제 화면으로 재생될 때까지 걸린 시간입니다. 파이프라인 내부 지연을 파악할 수 있습니다.</div>
+          <div class="metric-title">Segment Ingest to Render Latency (sec)</div>
+          <div class="metric-desc">Time from segment buffer ingest to on-screen playback, indicating pipeline latency.</div>
           <div class="metric-pair">
             <div class="metric-card">
               <div class="metric-label">1</div>
               <div>
                 <canvas id="ingestGraph1" width="200" height="60"></canvas>
                 <div class="metric-value" id="ingestValue1">-</div>
-                <div class="metric-details">최근 30개 조각 기준</div>
+                <div class="metric-details">Based on latest 30 segments</div>
               </div>
             </div>
             <div class="metric-card">
@@ -1175,18 +1102,18 @@
               <div>
                 <canvas id="ingestGraph2" width="200" height="60"></canvas>
                 <div class="metric-value" id="ingestValue2">-</div>
-                <div class="metric-details">최근 30개 조각 기준</div>
+                <div class="metric-details">Based on latest 30 segments</div>
               </div>
             </div>
           </div>
         </div>
 
         <div class="metric">
-          <div class="metric-title">플레이어 간 타임라인 차이 (초)</div>
-          <div class="metric-desc">Player 2 재생 위치에서 Player 1 위치를 뺀 값입니다. 업스케일링 파이프라인과 원본의 동기화 오차를 확인할 수 있습니다.</div>
+          <div class="metric-title">Timeline Difference Between Players (sec)</div>
+          <div class="metric-desc">Player 2 currentTime minus Player 1 currentTime. Useful for sync drift checks.</div>
           <div class="metric-inline single-value">
             <div class="metric-chip">
-              <strong>현재 차이</strong>
+              <strong>Current difference</strong>
               <span id="timeDiffValue">-</span>
               <small id="timeDiffDetail">-</small>
             </div>
@@ -1197,29 +1124,29 @@
 
 
     <div class="monitor-section">
-      <h3>품질 &amp; 프레임</h3>
+      <h3>Quality &amp; Frames</h3>
       <div class="metric-group">
         <div class="metric">
-          <div class="metric-title">해상도 / 비트레이트 / 코덱</div>
-          <div class="metric-desc">Hls.js 가 선택한 현재 스트림의 영상 해상도, 표기된 비트레이트, 코덱 정보를 보여줍니다.</div>
+          <div class="metric-title">Resolution / Bitrate / Codec</div>
+          <div class="metric-desc">Shows current stream resolution, advertised bitrate, and codec from Hls.js.</div>
           <div class="metric-inline">
             <div class="metric-chip">
               <strong>Player 1</strong>
               <span id="qualityValue1">-</span>
-              <small id="codecValue1">코덱: -</small>
+              <small id="codecValue1">Codec: -</small>
             </div>
             <div class="metric-chip">
               <strong>Player 2</strong>
               <span id="qualityValue2">-</span>
-              <small id="codecValue2">코덱: -</small>
+              <small id="codecValue2">Codec: -</small>
             </div>
           </div>
         </div>
 
 
         <div class="metric">
-          <div class="metric-title">드롭된 프레임 / 총 프레임</div>
-          <div class="metric-desc">브라우저 영상 렌더러가 처리하지 못해 버린 프레임 수와 전체 디코딩 프레임 수를 표시합니다. 비율이 높으면 렌더링 성능 문제를 의미합니다.</div>
+          <div class="metric-title">Dropped Frames / Total Frames</div>
+          <div class="metric-desc">Displays dropped frames and total decoded frames. A high ratio indicates rendering performance issues.</div>
           <div class="metric-inline">
             <div class="metric-chip">
               <strong>Player 1</strong>
@@ -1234,20 +1161,20 @@
 
 
         <div class="metric">
-          <div class="metric-title">에러 카운트</div>
-          <div class="metric-desc">Hls.js 에서 감지된 네트워크/미디어/기타 에러 누적 횟수입니다. 자동 복구가 진행된 경우라도 여기에서 확인할 수 있습니다.</div>
+          <div class="metric-title">Error Count</div>
+          <div class="metric-desc">Cumulative network/media/other errors detected by Hls.js.</div>
           <div class="metric-inline">
             <div class="metric-chip">
               <strong>Player 1</strong>
-              <span>네트워크: <span id="errorNetwork1">0</span></span>
-              <span>미디어: <span id="errorMedia1">0</span></span>
-              <span>기타: <span id="errorOther1">0</span></span>
+              <span>Network: <span id="errorNetwork1">0</span></span>
+              <span>Media: <span id="errorMedia1">0</span></span>
+              <span>Other: <span id="errorOther1">0</span></span>
             </div>
             <div class="metric-chip">
               <strong>Player 2</strong>
-              <span>네트워크: <span id="errorNetwork2">0</span></span>
-              <span>미디어: <span id="errorMedia2">0</span></span>
-              <span>기타: <span id="errorOther2">0</span></span>
+              <span>Network: <span id="errorNetwork2">0</span></span>
+              <span>Media: <span id="errorMedia2">0</span></span>
+              <span>Other: <span id="errorOther2">0</span></span>
             </div>
           </div>
         </div>
@@ -1265,10 +1192,10 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
     const PLAYER_IDS = [1,2,3,4];
     const DEFAULT_LAYOUT_ID = '1x2';
     const LAYOUTS = {
-      '1x2': { label: '1행 2열', playerCount: 2, columns: 2, rows: 1 },
-      '2x2': { label: '2행 2열', playerCount: 4, columns: 2, rows: 2 },
-      '1x4': { label: '1행 4열', playerCount: 4, columns: 4, rows: 1 },
-      '1x3': { label: '1행 3열', playerCount: 3, columns: 3, rows: 1 }
+      '1x2': { label: '1x2', playerCount: 2, columns: 2, rows: 1 },
+      '2x2': { label: '2x2', playerCount: 4, columns: 2, rows: 2 },
+      '1x4': { label: '1x4', playerCount: 4, columns: 4, rows: 1 },
+      '1x3': { label: '1x3', playerCount: 3, columns: 3, rows: 1 }
     };
     const getLayoutConfig = (layoutId)=>LAYOUTS[layoutId] || LAYOUTS[DEFAULT_LAYOUT_ID];
     let activeLayoutId = DEFAULT_LAYOUT_ID;
@@ -1736,7 +1663,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       if(length===0){
         const empty=document.createElement('div');
         empty.className='playlist-empty';
-        empty.textContent='플레이목록이 비어있습니다. "여러파일추가"를 통해 목록을 구성해보세요.';
+        empty.textContent='Playlist is empty. Add items to create a list.';
         playlistBody.appendChild(empty);
       }else{
         const activeIndices=getActivePlayerIndices();
@@ -1762,7 +1689,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
               label.textContent=`P${player+1}`;
               const name=document.createElement('span');
               name.className='playlist-name';
-              name.textContent='비어있음';
+              name.textContent='Empty';
               cell.appendChild(label);
               cell.appendChild(name);
             }else{
@@ -1774,14 +1701,14 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
               name.textContent=item.name||item.url||'';
               const type=document.createElement('span');
               type.className='playlist-type';
-              type.textContent=item.type==='file'?'📁 파일':'🔗 URL';
+              type.textContent=item.type==='file'?'📁 File':'🔗 URL';
               cell.appendChild(label);
               cell.appendChild(name);
               cell.appendChild(type);
             }
             const edit=document.createElement('button');
             edit.type='button';
-            edit.textContent='편집';
+            edit.textContent='Edit';
             edit.dataset.player=player;
             edit.dataset.index=index;
             cell.appendChild(edit);
@@ -1791,7 +1718,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
           del.className='playlist-delete';
           del.type='button';
           del.dataset.index=index;
-          del.textContent='삭제';
+          del.textContent='Delete';
           row.appendChild(del);
           playlistBody.appendChild(row);
         });
@@ -1916,7 +1843,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
 
       const typeSelect=document.createElement('select');
       typeSelect.className='bulk-type';
-      typeSelect.innerHTML='<option value="file">파일</option><option value="url">URL</option>';
+      typeSelect.innerHTML='<option value="file">File</option><option value="url">URL</option>';
       typeSelect.value=initialType;
 
       const content=document.createElement('div');
@@ -1932,10 +1859,10 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       const fileButton=document.createElement('button');
       fileButton.type='button';
       fileButton.className='bulk-file-btn';
-      fileButton.textContent='파일 선택';
+      fileButton.textContent='Choose file';
       const fileName=document.createElement('span');
       fileName.className='bulk-file-name';
-      fileName.textContent=data.file?.name || data.name || '선택된 파일 없음';
+      fileName.textContent=data.file?.name || data.name || 'No file selected';
       fileName.style.fontSize='11px';
       fileName.style.color='#9ecbf5';
       fileWrapper.appendChild(fileButton);
@@ -1943,7 +1870,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
 
       const urlInput=document.createElement('input');
       urlInput.type='text';
-      urlInput.placeholder='URL 입력';
+      urlInput.placeholder='Enter URL';
       urlInput.className='bulk-url-input';
       if(data.type==='url' && data.url) urlInput.value=data.url;
 
@@ -2000,7 +1927,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
     function assignFileToRow(row,file){
       row._file=file||null;
       const nameEl=row.querySelector('.bulk-file-name');
-      if(nameEl) nameEl.textContent=file?file.name:'선택된 파일 없음';
+      if(nameEl) nameEl.textContent=file?file.name:'No file selected';
     }
 
     function collectBulkItems(modal){
@@ -2079,15 +2006,15 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
     function handleFile(file,video,label,box,index,{fromPlaylist=false,autoplay=true,resumeTime=null}={}){
       const mediaKind=inferMediaKindFromFile(file);
       if(!mediaKind){
-        const fileName=file?.name||'알 수 없는 파일';
-        const fileType=file?.type||'(type 없음)';
-        alert(`지원하지 않는 파일 형식입니다.\n파일: ${fileName}\nMIME: ${fileType}`);
+        const fileName=file?.name||'Unknown file';
+        const fileType=file?.type||'(no type)';
+        alert(`Unsupported file type.\nFile: ${fileName}\nMIME: ${fileType}`);
         return;
       }
       if(mediaKind==='exr'){
         handleExrFile(file,label,box,index,{fromPlaylist}).catch(err=>{
           console.error('EXR load failed',err);
-          alert(`EXR 로드 실패: ${err.message||err}`);
+          alert(`EXR load failed: ${err.message||err}`);
         });
         return;
       }
@@ -2130,7 +2057,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       if(mediaKind==='exr'){
         handleExrUrl(url,label,box,index,{fromPlaylist}).catch(err=>{
           console.error('EXR URL load failed',err);
-          alert(`EXR URL 로드 실패: ${err.message||err}`);
+          alert(`EXR URL load failed: ${err.message||err}`);
         });
         return;
       }
@@ -2145,7 +2072,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       box.classList.add("loaded");
       resetMetricState(index);
 
-      // HLS 처리
+      // HLS handling
       if (mediaKind==='hls' || url.endsWith(".m3u8")) {
         if (Hls.isSupported()) {
           const hls = new Hls(HLS_DEFAULT_CONFIG);
@@ -2163,10 +2090,10 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
           try{ video.load(); }catch(err){}
           scheduleResume(video, { resumeTime, shouldPlay: autoplay });
         } else {
-          alert("HLS 재생을 지원하지 않는 브라우저입니다.");
+          alert("This browser does not support HLS playback.");
         }
       }
-      // 일반 mp4, webm 등 처리
+      // Standard MP4/WebM handling
       else {
         video.src = url;
         showVideo(index);
@@ -2241,12 +2168,6 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       if(e.key === 'Escape' && monitorVisible){
         e.preventDefault();
         toggleMonitor(false);
-        return;
-      }
-      if(!isTyping && (e.ctrlKey||e.metaKey) && !e.altKey && (/^[1-5]$/.test(key) || /^Digit[1-5]$/.test(code))){
-        e.preventDefault();
-        const digit = /^[1-5]$/.test(key) ? parseInt(key,10) : parseInt(code.replace('Digit',''),10);
-        if(Number.isFinite(digit)) loadPlaylistIndex(digit-1,{autoplay:true,force:true});
         return;
       }
       if(code==="Space" && !isTyping){
@@ -2369,9 +2290,9 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       const saved = results.filter(item=>item.saved).length;
       const failed = results.length - saved;
       if(saved===0){
-        alert('저장할 영상 프레임이 없습니다. 영상이 로드되고 현재 프레임이 표시된 상태인지 확인해 주세요.');
+        alert('No savable video frame found. Ensure videos are loaded and a frame is currently displayed.');
       }else if(failed>0){
-        alert(`총 ${saved}개 프레임을 저장했습니다. ${failed}개는 저장하지 못했습니다. (원격 영상의 CORS 제한 또는 아직 프레임 준비 전 상태일 수 있습니다.)`);
+        alert(`Saved ${saved} frame(s). ${failed} frame(s) failed (possible remote CORS restriction or frame not ready yet).`);
       }
     }
 
@@ -2466,7 +2387,7 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       image.onload=()=>{ updateTransforms(); };
       image.onerror=()=>{
         console.error('Image load failed',source.name,source.url);
-        alert(`이미지 로드 실패: ${source.name}`);
+        alert(`Image load failed: ${source.name}`);
       };
       showImage(index);
       label.textContent=source.name;
@@ -2687,13 +2608,13 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
         if(!isPlayerActive(index)){
           button.textContent='▶';
           button.setAttribute('aria-pressed','false');
-          button.setAttribute('aria-label','재생');
+          button.setAttribute('aria-label','Play');
           return;
         }
         const playing=hasVideoSource(videos[index]) && !videos[index].paused;
         button.textContent=playing?'⏸':'▶';
         button.setAttribute('aria-pressed',playing?'true':'false');
-        button.setAttribute('aria-label',playing?'일시정지':'재생');
+        button.setAttribute('aria-label',playing?'Pause':'Play');
       });
     }
 
@@ -3228,18 +3149,18 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
       if(!metricEls.speed[index]) return;
       metricEls.speed[index].textContent=formatNumber(m.avgSpeed,'Mbps',2);
       if(metricEls.speedInstant[index]) metricEls.speedInstant[index].textContent=formatNumber(m.lastSpeed,'Mbps',2);
-      metricEls.latency[index].textContent=m.lastLatency!==null&&m.lastLatency!==undefined&&!Number.isNaN(m.lastLatency)?`${m.lastLatency.toFixed(3)} 초`:'-';
+      metricEls.latency[index].textContent=m.lastLatency!==null&&m.lastLatency!==undefined&&!Number.isNaN(m.lastLatency)?`${m.lastLatency.toFixed(3)}  sec`:'-';
       metricEls.bandwidth[index].textContent=formatNumber(m.lastBandwidth,'Mbps',2);
-      metricEls.buffer[index].textContent=m.lastBuffer!==null&&m.lastBuffer!==undefined&&!Number.isNaN(m.lastBuffer)?`${m.lastBuffer.toFixed(2)} 초`:'-';
-      metricEls.ingest[index].textContent=m.lastIngestLatency!==null&&m.lastIngestLatency!==undefined&&!Number.isNaN(m.lastIngestLatency)?`${m.lastIngestLatency.toFixed(2)} 초`:'-';
+      metricEls.buffer[index].textContent=m.lastBuffer!==null&&m.lastBuffer!==undefined&&!Number.isNaN(m.lastBuffer)?`${m.lastBuffer.toFixed(2)}  sec`:'-';
+      metricEls.ingest[index].textContent=m.lastIngestLatency!==null&&m.lastIngestLatency!==undefined&&!Number.isNaN(m.lastIngestLatency)?`${m.lastIngestLatency.toFixed(2)}  sec`:'-';
       metricEls.playback[index].textContent=`${(m.playbackRate||1).toFixed(2)}x`;
-      metricEls.stallCount[index].textContent=`${m.stallCount}회`;
-      metricEls.stallDuration[index].textContent=`${m.stallDuration.toFixed(1)}초`;
+      metricEls.stallCount[index].textContent=`${m.stallCount} times`;
+      metricEls.stallDuration[index].textContent=`${m.stallDuration.toFixed(1)} sec`;
       const qualityParts=[];
       if(m.lastResolution&&m.lastResolution!=='-') qualityParts.push(m.lastResolution);
       if(m.lastBitrate&&Number.isFinite(m.lastBitrate)) qualityParts.push(`${(m.lastBitrate/1000).toFixed(0)} kbps`);
       metricEls.quality[index].textContent=qualityParts.length?qualityParts.join(' · '):'-';
-      metricEls.codec[index].textContent=`코덱: ${m.lastCodec&&m.lastCodec!=='-'?m.lastCodec:'-'}`;
+      metricEls.codec[index].textContent=`Codec: ${m.lastCodec&&m.lastCodec!=='-'?m.lastCodec:'-'}`;
       if(m.total){
         const ratio=(m.dropped/m.total)*100;
         metricEls.dropped[index].textContent=`${m.dropped} / ${m.total} (${ratio.toFixed(2)}%)`;
@@ -3326,13 +3247,15 @@ var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,
         const t2=primaryB.currentTime;
         const diff=t2-t1;
         const sign=diff>=0?'+':'-';
-        timeDiffValueEl.textContent=`${sign}${Math.abs(diff).toFixed(3)} 초`;
-        timeDiffDetailEl.textContent=`P1 ${t1.toFixed(3)}초 · P2 ${t2.toFixed(3)}초`;
+        timeDiffValueEl.textContent=`${sign}${Math.abs(diff).toFixed(3)}  sec`;
+        timeDiffDetailEl.textContent=`P1 ${t1.toFixed(3)} sec · P2 ${t2.toFixed(3)} sec`;
       }else{
         timeDiffValueEl.textContent='-';
-        timeDiffDetailEl.textContent='두 플레이어 모두 로드되면 표시됩니다.';
+        timeDiffDetailEl.textContent='Shown when both players are loaded.';
       }
     },1000);
   </script>
 </body>
 </html>
+
+

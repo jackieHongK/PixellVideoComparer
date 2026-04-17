@@ -1,100 +1,90 @@
 ﻿# HLS/Video Comparer
 
-브라우저에서 바로 실행되는 영상 비교 뷰어입니다.  
-비포/애프터 화질 비교를 빠르게 하려고 만들었습니다.
+A browser-based video comparison tool for fast before/after quality checks.
 
-<img width="1906" height="935" alt="image" src="https://github.com/user-attachments/assets/d3407b65-e144-4eb6-bf3a-6613a4f49b1e" />
+## Why this exists
 
-## 왜 만들었나
+Comparing quality-improved output against the original is usually annoying:
 
-화질 개선 작업을 하고 나면 비포/애프터 확인이 너무 번거롭습니다.
+- Two separate players are hard to sync.
+- Side-by-side layout needs constant manual resizing.
+- Repeating this workflow for many clips wastes time.
 
-- 플레이어 2개를 띄워도 싱크 맞추기 어려움
-- 좌우 배치/크기 세팅을 매번 다시 해야 함
-- 여러 소스를 동시에 비교하기가 불편함
+This project solves that with a single HTML app you can run directly in a browser.
 
-그래서:
+## What it does
 
-- 드래그앤드롭으로 영상 여러 개를 바로 넣고
-- 한 화면에서 동시에 비교하고
-- HTML 파일 하나로 브라우저에서 바로 돌릴 수 있는
+- Multi-view comparison layouts
+  - `1x2` (default)
+  - `2x2`
+  - `1x4`
+  - `1x3`
+- Drag-and-drop media loading
+  - Local files
+  - URL input
+  - HLS (`.m3u8`) via `hls.js`
+- Sync and navigation controls
+  - Play/pause, seek, frame stepping, speed control
+- Zoom/crop inspection
+  - Mouse wheel zoom
+  - Left/right 50% crop toggle
+- Real-time monitoring panel
+  - Bandwidth, latency, buffer, dropped frames, errors
+- Still-frame capture
+  - Button or `C` shortcut
+  - Saves PNGs using `sourceName_still_YYYYMMDD-hhmmss.png`
+  - Captures full native video frame resolution (independent of zoom/crop)
 
-도구를 직접 만들었습니다.
+## Removed in this version
 
-## 주요 기능
+- Playlist feature has been removed.
 
-- 멀티 비교 레이아웃
-  - 1행 2열 (기본)
-  - 2행 2열
-  - 1행 4열
-  - 1행 3열
-- 드래그앤드롭 입력
-  - 로컬 파일 / URL 입력 지원
-  - HLS(`.m3u8`) 재생 지원 (hls.js)
-- 동기 비교 보조
-  - 공통 타임라인 탐색
-  - 프레임 단위 이동(좌/우, Shift 가속)
-  - 재생/정지, 배속 조절
-- 줌/크롭 비교
-  - 마우스 휠 확대/축소
-  - 좌/우 50% 크롭 토글
-- 플레이리스트 기능
-  - 플레이어별 목록 편집
-  - 세트 단위 로드
-- 실시간 모니터링 패널
-  - 버퍼, 속도, 에러 지표 확인
-- 스틸 캡처 (PNG 저장)
-  - 버튼 또는 단축키 `C`
-  - 현재 활성 레이아웃의 영상 프레임을 즉시 저장
-  - 파일명 규칙: `원본이름_still_YYYYMMDD-hhmmss.png`
-  - 확대/축소 상태와 무관하게 원본 프레임 해상도로 저장
+## Run locally
 
-## 로컬 실행
+1. Open `index.html` in a modern browser.
+2. Drag files into each player (or paste URL + Enter).
+3. Pick a layout and compare.
+4. Press `C` (or click `Capture`) to export current frames.
 
-1. 저장소를 클론하거나 파일을 다운로드합니다.
-2. `index.html`을 브라우저에서 엽니다.
-3. 각 플레이어 박스에 파일을 드래그앤드롭하거나 URL을 입력합니다.
+## Free hosting on GitHub Pages
 
-## GitHub Pages 배포 (무료)
+This is a static app, so GitHub Pages hosting is free.
 
-이 프로젝트는 정적 파일이라 GitHub Pages 무료 호스팅이 가능합니다.
+1. Push this repository to GitHub.
+2. Go to `Settings -> Pages`.
+3. Set `Source` to `Deploy from a branch`.
+4. Select `main` and `/ (root)`.
+5. Save and wait for deployment.
 
-1. 이 폴더를 GitHub 퍼블릭 저장소로 push합니다.
-2. GitHub 저장소에서 `Settings` -> `Pages`로 이동합니다.
-3. `Build and deployment`에서 `Source`를 `Deploy from a branch`로 선택합니다.
-4. Branch를 `main`(또는 `master`) / `/ (root)`로 선택하고 Save합니다.
-5. 1~3분 뒤 배포 URL이 생성됩니다.
+Your site URL will be:
 
-예시 URL:
-- `https://<github-username>.github.io/<repo-name>/`
+- `https://<username>.github.io/<repo-name>/`
 
-## 단축키
+## Keyboard shortcuts
 
-- `Space`: 재생/정지
-- `R`: 타임 싱크
-- `0~9`: 전체 길이의 0~90% 위치로 이동
-- `-`: 최신 버퍼 구간으로 이동
-- `S`: 좌/우 50% 크롭 토글
-- `M`: 모니터링 패널 토글
-- `F`: 전체화면
-- `← / →`: 프레임 이동
-- `Shift + ← / →`: 10프레임 이동
-- `Shift + < / >`: 재생속도 조절
-- `Ctrl + 1~5`: 해당 플레이리스트 재생
-- `C`: 현재 프레임 PNG 저장
-- `마우스 휠`: 확대/축소
+- `Space`: Play/Pause
+- `R`: Time sync
+- `0~9`: Jump to 0~90% timeline position
+- `-`: Jump to latest buffered segment
+- `S`: Toggle left/right 50% crop
+- `M`: Toggle monitoring panel
+- `F`: Fullscreen
+- `Left/Right`: Step frame
+- `Shift + Left/Right`: Step 10 frames
+- `Shift + < / >`: Adjust playback speed
+- `C`: Save current frame as PNG
+- `Mouse wheel`: Zoom in/out
 
-## 요구사항
+## Requirements
 
-- 최신 브라우저(Chrome/Edge 권장)
-- 인터넷 연결(기본 hls.js CDN 로드용)
+- Modern browser (Chrome/Edge recommended)
+- Internet access for CDN-loaded `hls.js`
 
-## 참고/주의
+## Notes
 
-- GitHub Pages는 `https` 환경이므로 원격 영상/HLS URL도 `https` 권장
-- 원격 영상은 서버 CORS 설정에 따라 캡처가 제한될 수 있음
-- 로컬 실험/비교 중심의 단일 HTML 도구
+- Remote stream capture may fail if the source server blocks canvas access (CORS).
+- For GitHub Pages, prefer HTTPS media URLs.
 
-## 라이선스
+## License
 
 [MIT](./LICENSE)
