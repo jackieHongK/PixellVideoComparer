@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About | Pixell Video Comparer</title>
+  <style>
+    :root {
+      --rui-dark: #191c1f;
+      --rui-light: #ffffff;
+      --rui-surface: #f4f4f4;
+      --rui-blue: #494fdf;
+      --rui-muted: #8d969e;
+      --rui-border: #c9c9cd;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--rui-light);
+      color: var(--rui-dark);
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 28px;
+      border-bottom: 1px solid rgba(25,28,31,0.12);
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 42px;
+      padding: 0 24px;
+      border-radius: 9999px;
+      border: 2px solid var(--rui-dark);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.16px;
+      transition: opacity 0.2s;
+    }
+
+    .pill-dark {
+      background: var(--rui-dark);
+      color: var(--rui-light);
+    }
+
+    .pill-light {
+      background: transparent;
+      color: var(--rui-dark);
+    }
+
+    .pill:hover { opacity: 0.85; }
+
+    .hero {
+      padding: 48px 28px 28px;
+      display: grid;
+      gap: 28px;
+    }
+
+    .headline {
+      margin: 0;
+      font-size: clamp(36px, 7vw, 84px);
+      line-height: 1;
+      letter-spacing: -1.2px;
+      font-weight: 500;
+      max-width: 980px;
+    }
+
+    .sub {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.56;
+      letter-spacing: 0.18px;
+      color: #505a63;
+      max-width: 880px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .content {
+      padding: 0 28px 40px;
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .card {
+      border: 1px solid rgba(25,28,31,0.14);
+      border-radius: 20px;
+      padding: 20px;
+      background: #fff;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: -0.24px;
+      font-weight: 500;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.56;
+      color: #505a63;
+      letter-spacing: 0.16px;
+    }
+
+    .footer {
+      padding: 12px 28px;
+      border-top: 1px solid rgba(25,28,31,0.12);
+      color: var(--rui-muted);
+      font-size: 12px;
+      letter-spacing: 0.16px;
+      background: #fff;
+    }
+
+    @media (max-width: 760px) {
+      .nav, .hero, .content, .footer { padding-left: 16px; padding-right: 16px; }
+      .hero { padding-top: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="nav">
+      <div class="brand">Pixell Video Comparer</div>
+      <a class="pill pill-light" href="./index.html">Open Viewer</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1 class="headline">Frame-accurate before/after video comparison in your browser.</h1>
+        <p class="sub">
+          Pixell Video Comparer removes the repetitive pain of quality QA.
+          Load multiple sources, sync playback, inspect details with zoom/crop,
+          and export still frames instantly without setting up heavyweight tools.
+        </p>
+        <div class="actions">
+          <a class="pill pill-dark" href="./index.html">Launch Comparer</a>
+          <a class="pill pill-light" href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">View GitHub</a>
+        </div>
+      </section>
+
+      <section class="content">
+        <article class="card">
+          <h3>Built for real QA flow</h3>
+          <p>Stop juggling separate players and resizing windows every time. Put all candidate outputs into one synchronized workspace.</p>
+        </article>
+        <article class="card">
+          <h3>Single-file, fast startup</h3>
+          <p>No framework overhead. Just open the HTML and start comparing videos immediately in a modern browser.</p>
+        </article>
+        <article class="card">
+          <h3>Shareable evidence</h3>
+          <p>Capture current frames as PNG with consistent naming so teams can review and discuss visual differences quickly.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">Designed with a Revolut-inspired visual language using local DESIGN.md guidance.</footer>
+  </div>
+</body>
+</html>
