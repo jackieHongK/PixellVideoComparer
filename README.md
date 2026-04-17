@@ -3,6 +3,8 @@
 브라우저에서 바로 실행되는 **영상 비교 뷰어**입니다.  
 비포/애프터 화질 비교를 빠르게 하기 위해 만들었습니다.
 
+<img width="1906" height="935" alt="image" src="https://github.com/user-attachments/assets/d3407b65-e144-4eb6-bf3a-6613a4f49b1e" />
+
 ## 왜 만들었나
 
 화질 개선 작업을 하고 나면 비포/애프터 확인이 생각보다 너무 번거롭습니다.
