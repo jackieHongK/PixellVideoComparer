@@ -1886,81 +1886,27 @@ const PLAYER_IDS = [1,2,3,4];
       return mediaInfoInstance;
     }
 
-    function buildFallbackRows(file, video){
+    function buildFallbackMeta(file, video){
       const ext=(file.name.split('.').pop()||'').toUpperCase();
       const vw=video&&video.videoWidth||0, vh=video&&video.videoHeight||0;
-      const res=vw&&vh?`${vw}×${vh}`:'—';
-      const dur=video&&video.duration&&isFinite(video.duration)?fmtDuration(video.duration):'—';
+      const dur=video&&video.duration&&isFinite(video.duration)?fmtDuration(video.duration):'';
       const obr=video&&video.duration&&isFinite(video.duration)&&video.duration>0
-        ?fmtKbps(file.size*8/video.duration):'—';
+        ?fmtKbps(file.size*8/video.duration):'';
       const g=(a,b)=>b===0?a:g(b,a%b);
-      const ar=vw&&vh?(()=>{const d=g(vw,vh);return `${vw/d}:${vh/d}`;})():'—';
-      return [
-        {s:'General',k:'filename',  label:'File Name',      v:file.name},
-        {s:'General',k:'container', label:'Container',      v:ext||'—'},
-        {s:'General',k:'duration',  label:'Duration',       v:dur},
-        {s:'General',k:'filesize',  label:'File Size',      v:fmtSize(file.size)},
-        {s:'General',k:'obitrate',  label:'Overall Bitrate',v:obr},
-        {s:'Video',  k:'vcodec',    label:'Codec',          v:'—'},
-        {s:'Video',  k:'resolution',label:'Resolution',     v:res},
-        {s:'Video',  k:'fps',       label:'Frame Rate',     v:'—'},
-        {s:'Video',  k:'bitdepth',  label:'Bit Depth',      v:'—'},
-        {s:'Video',  k:'chroma',    label:'Chroma',         v:'—'},
-        {s:'Video',  k:'colorprim', label:'Color Primaries',v:'—'},
-        {s:'Video',  k:'transfer',  label:'Transfer',       v:'—'},
-        {s:'Video',  k:'hdr',       label:'HDR',            v:'—'},
-        {s:'Video',  k:'aspect',    label:'Aspect Ratio',   v:ar},
-        {s:'Video',  k:'scantype',  label:'Scan Type',      v:'—'},
-        {s:'Video',  k:'vbitrate',  label:'Video Bitrate',  v:'—'},
-        {s:'Audio',  k:'acodec',    label:'Codec',          v:'—'},
-        {s:'Audio',  k:'channels',  label:'Channels',       v:'—'},
-        {s:'Audio',  k:'samplerate',label:'Sample Rate',    v:'—'},
-        {s:'Audio',  k:'abitdepth', label:'Bit Depth',      v:'—'},
-        {s:'Audio',  k:'abitrate',  label:'Audio Bitrate',  v:'—'},
-        {s:'Audio',  k:'lang',      label:'Language',       v:'—'},
-      ];
-    }
-
-    function extractMediaInfoRows(filename, info){
-      const tracks=info?.media?.track||[];
-      const G=tracks.find(t=>t['@type']==='General')||{};
-      const V=tracks.find(t=>t['@type']==='Video')||{};
-      const A=tracks.find(t=>t['@type']==='Audio')||{};
-      const hdrRaw=V.HDR_Format||V.HDR_Format_Compatibility||'';
-      const tc=V.transfer_characteristics||'';
-      const hdrLabel=hdrRaw||( tc.includes('PQ')?'HDR10': tc.includes('HLG')?'HLG': tc?'SDR':'—' );
-      const vCodec=[V.Format,V.Format_Profile].filter(Boolean).join(' ')||'—';
-      const sr=A.SamplingRate?`${(parseInt(A.SamplingRate)/1000).toFixed(1)} kHz`:'—';
-      const aCh=A.Channels?`${A.Channels}ch`:'—';
-      return [
-        {s:'General',k:'filename',  label:'File Name',      v:filename||'—'},
-        {s:'General',k:'container', label:'Container',      v:G.Format||'—'},
-        {s:'General',k:'duration',  label:'Duration',       v:fmtDuration(G.Duration)},
-        {s:'General',k:'filesize',  label:'File Size',      v:fmtSize(G.FileSize)},
-        {s:'General',k:'obitrate',  label:'Overall Bitrate',v:fmtKbps(G.OverallBitRate)},
-        {s:'Video',  k:'vcodec',    label:'Codec',          v:vCodec},
-        {s:'Video',  k:'resolution',label:'Resolution',     v:V.Width&&V.Height?`${V.Width}×${V.Height}`:'—'},
-        {s:'Video',  k:'fps',       label:'Frame Rate',     v:V.FrameRate?parseFloat(V.FrameRate).toFixed(3)+' fps':'—'},
-        {s:'Video',  k:'bitdepth',  label:'Bit Depth',      v:V.BitDepth?`${V.BitDepth}-bit`:'—'},
-        {s:'Video',  k:'chroma',    label:'Chroma',         v:V.ChromaSubsampling||'—'},
-        {s:'Video',  k:'colorprim', label:'Color Primaries',v:V.colour_primaries||'—'},
-        {s:'Video',  k:'transfer',  label:'Transfer',       v:tc||'—'},
-        {s:'Video',  k:'hdr',       label:'HDR',            v:hdrLabel},
-        {s:'Video',  k:'aspect',    label:'Aspect Ratio',   v:V.DisplayAspectRatio_String||V.DisplayAspectRatio||'—'},
-        {s:'Video',  k:'scantype',  label:'Scan Type',      v:V.ScanType||'—'},
-        {s:'Video',  k:'vbitrate',  label:'Video Bitrate',  v:fmtKbps(V.BitRate)},
-        {s:'Audio',  k:'acodec',    label:'Codec',          v:A.Format||'—'},
-        {s:'Audio',  k:'channels',  label:'Channels',       v:aCh},
-        {s:'Audio',  k:'samplerate',label:'Sample Rate',    v:sr},
-        {s:'Audio',  k:'abitdepth', label:'Bit Depth',      v:A.BitDepth?`${A.BitDepth}-bit`:'—'},
-        {s:'Audio',  k:'abitrate',  label:'Audio Bitrate',  v:fmtKbps(A.BitRate)},
-        {s:'Audio',  k:'lang',      label:'Language',       v:A.Language||'—'},
-      ];
+      const ar=vw&&vh?(()=>{const d=g(vw,vh);return `${vw/d}:${vh/d}`;})():'';
+      // Store as raw-like tracks so refreshMetaTable can render uniformly
+      return {
+        tracks:[
+          {'@type':'General','File name':file.name,'Format':ext,'Duration':dur,'File size':fmtSize(file.size),'Overall bit rate':obr},
+          {'@type':'Video','Width':vw||'','Height':vh||'','Display aspect ratio':ar},
+        ],
+        fallback:true,
+      };
     }
 
     async function analyzeFileMetadata(file, index){
       fileMetaAnalyzing[index]=true;
-      fileMetadata[index]=buildFallbackRows(file, videos[index]);
+      fileMetadata[index]=buildFallbackMeta(file, videos[index]);
       if(metaPanelVisible) refreshMetaTable();
       try{
         const mi=await getMediaInfoInstance();
@@ -1973,7 +1919,7 @@ const PLAYER_IDS = [1,2,3,4];
         });
         const raw=await mi.analyzeData(getSize,readChunk);
         const parsed=typeof raw==='string'?JSON.parse(raw):raw;
-        fileMetadata[index]=extractMediaInfoRows(file.name,parsed);
+        fileMetadata[index]={tracks: parsed?.media?.track||[]};
       }catch(e){
         console.warn('MediaInfo failed, using fallback:',e.message);
       }finally{
@@ -2019,6 +1965,19 @@ const PLAYER_IDS = [1,2,3,4];
       if(metaPanelVisible) refreshMetaTable();
     }
 
+    function buildTrackSections(meta){
+      const m={};let ac=0;
+      (meta?.tracks||[]).forEach(t=>{
+        const tp=t['@type'];
+        if(tp==='General') m.General=t;
+        else if(tp==='Video') m.Video=t;
+        else if(tp==='Audio') m[`Audio ${++ac}`]=t;
+      });
+      return m;
+    }
+
+    const META_SKIP=new Set(['@type','extra','count','status']);
+
     function refreshMetaTable(){
       const body=document.getElementById('metaPanelBody');
       const hint=document.getElementById('metaPanelHint');
@@ -2027,12 +1986,13 @@ const PLAYER_IDS = [1,2,3,4];
       const activeIdx=getActivePlayerIndices();
       const loadedIdx=activeIdx.filter(i=>fileMetadata[i]||fileMetaAnalyzing[i]);
       const analyzingIdx=activeIdx.filter(i=>fileMetaAnalyzing[i]);
+      const readyIdx=activeIdx.filter(i=>fileMetadata[i]);
 
       if(hint){
         const diffCount=countDiffRows(activeIdx);
         hint.textContent=analyzingIdx.length
           ? `Analyzing ${analyzingIdx.map(i=>`P${PLAYER_IDS[i]}`).join(', ')}…`
-          : loadedIdx.length>1&&diffCount>0
+          : readyIdx.length>1&&diffCount>0
           ? `${diffCount} field${diffCount>1?'s':''} differ`
           : '';
       }
@@ -2041,60 +2001,59 @@ const PLAYER_IDS = [1,2,3,4];
         body.innerHTML='<div class="meta-empty">Load video files to compare metadata.</div>';
         return;
       }
-
-      // Define canonical row order (use first loaded player's rows as template)
-      const templateIdx=activeIdx.find(i=>fileMetadata[i]);
-      if(templateIdx==null){
+      if(!readyIdx.length){
         body.innerHTML=`<div class="meta-loading"><span class="mt-analyzing">⬡ Analyzing…</span></div>`;
         return;
       }
-      const rowDefs=fileMetadata[templateIdx];
 
-      // Build per-key value map: key → {label, section, values: {index→value}}
-      const rowMap={};
+      // Build section map per player slot (null if not ready)
+      const playerSections=activeIdx.map(i=>fileMetadata[i]?buildTrackSections(fileMetadata[i]):null);
+
+      // Union of section keys in encounter order
+      const sectionOrder=[];
+      const seenSec=new Set();
+      playerSections.forEach(s=>{ if(s) Object.keys(s).forEach(k=>{ if(!seenSec.has(k)){seenSec.add(k);sectionOrder.push(k);} }); });
+
+      let html=`<table class="meta-table"><thead><tr><th class="mt-field-header">Field</th>`;
       activeIdx.forEach(i=>{
-        if(!fileMetadata[i]) return;
-        fileMetadata[i].forEach(r=>{ if(!rowMap[r.k]) rowMap[r.k]={label:r.label,s:r.s,vals:{}}; rowMap[r.k].vals[i]=r.v; });
-      });
-
-      const readyIdx=activeIdx.filter(i=>fileMetadata[i]);
-
-      // Build table HTML
-      let html='<table class="meta-table"><thead><tr>';
-      html+='<th class="mt-field-header">Field</th>';
-      activeIdx.forEach(i=>{
-        const name=fileMetaAnalyzing[i]?`<span class="mt-analyzing">P${PLAYER_IDS[i]} ⬡</span>`:`P${PLAYER_IDS[i]}`;
-        html+=`<th>${name}</th>`;
+        html+=fileMetaAnalyzing[i]?`<th><span class="mt-analyzing">P${PLAYER_IDS[i]} ⬡</span></th>`:`<th>P${PLAYER_IDS[i]}</th>`;
       });
       html+='</tr></thead><tbody>';
 
-      let curSection='';
-      rowDefs.forEach(rowDef=>{
-        const row=rowMap[rowDef.k];
-        if(!row) return;
-
-        if(rowDef.s!==curSection){
-          curSection=rowDef.s;
-          const colspan=1+activeIdx.length;
-          html+=`<tr class="mt-section"><td colspan="${colspan}">${curSection}</td></tr>`;
-        }
-
-        const vals=readyIdx.map(i=>row.vals[i]||'—');
-        const mostCommon=getMostCommon(vals.filter(v=>v!=='—'));
-        const hasDiff=new Set(vals.filter(v=>v!=='—')).size>1;
-
-        html+='<tr class="mt-row">';
-        html+=`<td class="mt-label">${rowDef.label}</td>`;
-        activeIdx.forEach(i=>{
-          if(fileMetaAnalyzing[i]&&!fileMetadata[i]){
-            html+='<td class="mt-val mt-empty">—</td>'; return;
-          }
-          const v=row.vals[i]||'—';
-          const isDiff=hasDiff&&v!==mostCommon&&v!=='—';
-          const cls='mt-val'+(isDiff?' mt-diff':v==='—'?' mt-empty':'');
-          html+=`<td class="${cls}">${v}</td>`;
+      sectionOrder.forEach(sec=>{
+        // Union of field keys for this section across all ready players
+        const fieldOrder=[];
+        const seenField=new Set();
+        playerSections.forEach(s=>{
+          if(!s||!s[sec]) return;
+          Object.keys(s[sec]).forEach(k=>{ if(!META_SKIP.has(k)&&!seenField.has(k)){seenField.add(k);fieldOrder.push(k);} });
         });
-        html+='</tr>';
+        if(!fieldOrder.length) return;
+
+        html+=`<tr class="mt-section"><td colspan="${1+activeIdx.length}">${sec}</td></tr>`;
+
+        fieldOrder.forEach(field=>{
+          const vals=activeIdx.map((_,ai)=>{
+            const s=playerSections[ai];
+            if(!s||!s[sec]) return null;
+            const v=s[sec][field];
+            return (v==null||v==='')?null:String(v);
+          });
+          const nonNull=vals.filter(v=>v!=null);
+          const hasDiff=new Set(nonNull).size>1;
+          const mostCommon=getMostCommon(nonNull);
+
+          html+='<tr class="mt-row"><td class="mt-label">'+field+'</td>';
+          activeIdx.forEach((playerI,ai)=>{
+            if(fileMetaAnalyzing[playerI]&&!fileMetadata[playerI]){
+              html+='<td class="mt-val mt-empty">—</td>'; return;
+            }
+            const v=vals[ai]??'—';
+            const isDiff=hasDiff&&v!==mostCommon&&v!=='—';
+            html+=`<td class="mt-val${isDiff?' mt-diff':v==='—'?' mt-empty':''}">${v}</td>`;
+          });
+          html+='</tr>';
+        });
       });
 
       html+='</tbody></table>';
@@ -2104,16 +2063,17 @@ const PLAYER_IDS = [1,2,3,4];
     function countDiffRows(activeIdx){
       const readyIdx=activeIdx.filter(i=>fileMetadata[i]);
       if(readyIdx.length<2) return 0;
-      const template=fileMetadata[readyIdx[0]];
-      if(!template) return 0;
+      const sections=readyIdx.map(i=>buildTrackSections(fileMetadata[i]));
+      const allSecs=new Set();
+      sections.forEach(s=>Object.keys(s).forEach(k=>allSecs.add(k)));
       let count=0;
-      template.forEach(rowDef=>{
-        const vals=readyIdx.map(i=>{
-          const row=fileMetadata[i]?.find(r=>r.k===rowDef.k);
-          return row?.v||'—';
+      allSecs.forEach(sec=>{
+        const allFields=new Set();
+        sections.forEach(s=>{ if(s[sec]) Object.keys(s[sec]).forEach(k=>{ if(!META_SKIP.has(k)) allFields.add(k); }); });
+        allFields.forEach(field=>{
+          const vals=sections.map(s=>{ const v=s[sec]?.[field]; return (v==null||v==='')?null:String(v); }).filter(v=>v!=null);
+          if(new Set(vals).size>1) count++;
         });
-        const unique=new Set(vals.filter(v=>v!=='—'));
-        if(unique.size>1) count++;
       });
       return count;
     }
