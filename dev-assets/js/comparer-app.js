@@ -172,6 +172,19 @@ const PLAYER_IDS = [1,2,3,4];
     const WEBCODECS_SUPPORTED=typeof VideoDecoder!=='undefined';
     const wcdStates=videos.map(()=>null);
 
+    // --- Per-player stats overlay ---
+    let statsActive=false;
+    let statsRafId=null;
+    const fpsHistories=videos.map(()=>[]);
+    const lastQuality=videos.map(()=>({total:0,dropped:0,time:performance.now()}));
+    const statsOverlays=videos.map(()=>null); // populated after DOM ready
+
+    // --- MediaInfo metadata comparison ---
+    let metaPanelVisible=false;
+    let mediaInfoInstance=null;
+    const fileMetadata=videos.map(()=>null);  // parsed meta per player
+    const fileMetaAnalyzing=videos.map(()=>false);
+
 
     const metrics = videos.map(()=>({
       speedHistory:[],
@@ -267,6 +280,15 @@ const PLAYER_IDS = [1,2,3,4];
     applyModeState(DEFAULT_LAYOUT_ID);
     // Set up timeline thumbnail hover for all players
     videos.forEach((_,i)=>setupTimelineThumb(i));
+    // Stats overlay init + toggle button
+    initStatsOverlays();
+    const statsToggleBtn=document.getElementById('statsToggleBtn');
+    if(statsToggleBtn) statsToggleBtn.addEventListener('click',toggleStats);
+    // Meta panel toggle
+    const metaToggleBtn=document.getElementById('metaToggleBtn');
+    if(metaToggleBtn) metaToggleBtn.addEventListener('click',toggleMetaPanel);
+    const metaPanelClose=document.getElementById('metaPanelClose');
+    if(metaPanelClose) metaPanelClose.addEventListener('click',toggleMetaPanel);
 
 
     boxes.forEach((box,i)=>{
@@ -288,9 +310,12 @@ const PLAYER_IDS = [1,2,3,4];
       });
 
 
+      box.addEventListener("dragenter",e=>{ e.preventDefault(); box.classList.add('dragover-active'); });
+      box.addEventListener("dragleave",e=>{ if(!box.contains(e.relatedTarget)) box.classList.remove('dragover-active'); });
       box.addEventListener("dragover",e=>e.preventDefault());
       box.addEventListener("drop",e=>{
         e.preventDefault();
+        box.classList.remove('dragover-active');
         const dt=e.dataTransfer;
         if(dt.files.length>0) handleFile(dt.files[0],video,label,box,i);
         else{
@@ -877,6 +902,8 @@ const PLAYER_IDS = [1,2,3,4];
       video._objectURL=url;
       video._sourceFile=file; // for WebCodecs init
       video.src=url;
+      // Analyze file metadata in background
+      analyzeFileMetadata(file,index).catch(()=>{});
       showVideo(index);
       applyPlaybackOptimizations(video);
       try{ video.load(); }catch(err){}
@@ -1209,7 +1236,11 @@ const PLAYER_IDS = [1,2,3,4];
     function clearVideoSource(video){
       if(!video) return;
       const idx=videos.indexOf(video);
-      if(idx>=0){ destroyFrameCache(idx); destroyThumbStrip(idx); destroyWebCodecs(idx); }
+      if(idx>=0){
+        destroyFrameCache(idx); destroyThumbStrip(idx); destroyWebCodecs(idx);
+        fileMetadata[idx]=null; fileMetaAnalyzing[idx]=false;
+        if(metaPanelVisible) refreshMetaTable();
+      }
       destroyHls(video);
       if(video._objectURL){
         try{ URL.revokeObjectURL(video._objectURL); }catch(err){}
@@ -1690,6 +1721,412 @@ const PLAYER_IDS = [1,2,3,4];
     function wcdHideCanvas(index){
       const st=wcdStates[index];
       if(st?.canvas) st.canvas.style.display='none';
+    }
+
+    // --- Stats overlay functions ---
+
+    function initStatsOverlays(){
+      PLAYER_IDS.forEach((pid,index)=>{
+        const box=boxes[index];
+        if(!box) return;
+        const el=document.createElement('div');
+        el.className='vid-stats';
+        el.id='vidStats'+pid;
+        // FPS sparkline canvas
+        const cv=document.createElement('canvas');
+        cv.width=200; cv.height=26;
+        el.appendChild(cv);
+        // Stats text container
+        const body=document.createElement('div');
+        body.className='vs-body';
+        el.appendChild(body);
+        box.appendChild(el);
+        statsOverlays[index]={el,canvas:cv,ctx:cv.getContext('2d'),body};
+      });
+    }
+
+    function toggleStats(){
+      statsActive=!statsActive;
+      const btn=document.getElementById('statsToggleBtn');
+      if(btn) btn.classList.toggle('active',statsActive);
+      if(statsActive){
+        startStatsLoop();
+      }else{
+        stopStatsLoop();
+        statsOverlays.forEach(ov=>{ if(ov) ov.el.classList.remove('visible'); });
+      }
+    }
+
+    function startStatsLoop(){
+      if(statsRafId) return;
+      const loop=()=>{
+        updateAllStats();
+        statsRafId=requestAnimationFrame(loop);
+      };
+      statsRafId=requestAnimationFrame(loop);
+    }
+
+    function stopStatsLoop(){
+      if(statsRafId){ cancelAnimationFrame(statsRafId); statsRafId=null; }
+    }
+
+    function updateAllStats(){
+      getActivePlayerIndices().forEach(i=>updateStatsForPlayer(i));
+    }
+
+    function updateStatsForPlayer(index){
+      const ov=statsOverlays[index];
+      if(!ov) return;
+      const v=videos[index];
+      const m=metrics[index];
+      if(!v||!hasVideoSource(v)){
+        ov.el.classList.remove('visible'); return;
+      }
+      ov.el.classList.add('visible');
+
+      // FPS via getVideoPlaybackQuality()
+      let fpsStr='—', dropStr='—';
+      if(typeof v.getVideoPlaybackQuality==='function'){
+        const q=v.getVideoPlaybackQuality();
+        const now=performance.now();
+        const lq=lastQuality[index];
+        const dt=(now-lq.time)/1000;
+        if(dt>=0.5){
+          const fDelta=q.totalVideoFrames-lq.total;
+          if(fDelta>0) fpsHistories[index].push(parseFloat((fDelta/dt).toFixed(2)));
+          if(fpsHistories[index].length>60) fpsHistories[index].shift();
+          lq.total=q.totalVideoFrames; lq.dropped=q.droppedVideoFrames; lq.time=now;
+        }
+        const hist=fpsHistories[index];
+        const curFps=hist.length?hist[hist.length-1]:null;
+        fpsStr=curFps!==null?curFps.toFixed(1)+'':'—';
+        const td=v.getVideoPlaybackQuality().droppedVideoFrames;
+        const tt=v.getVideoPlaybackQuality().totalVideoFrames;
+        if(tt>0) dropStr=((td/tt)*100).toFixed(1)+'%';
+      }
+
+      const res=v.videoWidth&&v.videoHeight?`${v.videoWidth}×${v.videoHeight}`:'—';
+      const codec=(m.lastCodec&&m.lastCodec!=='-')?m.lastCodec:'—';
+      const rate=m.playbackRate!==1?`${m.playbackRate}×`:'1×';
+      const stalls=String(m.stallCount);
+      const bitrate=m.lastBitrate?`${Math.round(m.lastBitrate/1000)}`:'';
+      const buffer=m.lastBuffer!=null?`${m.lastBuffer.toFixed(1)}s`:'';
+
+      // Sparkline
+      const hist=fpsHistories[index];
+      if(hist.length>1) drawStatsSparkline(ov.ctx,ov.canvas,hist);
+
+      // Text rows
+      const fpsCls=parseFloat(fpsStr)<18?'sv-warn':'';
+      const dropCls=parseFloat(dropStr)>2?'sv-warn':'';
+      ov.body.innerHTML=
+        `<div class="sv-row"><span class="sv-k">RES</span><span class="sv-v">${res}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">FPS</span><span class="sv-v ${fpsCls}">${fpsStr}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">DROP</span><span class="sv-v ${dropCls}">${dropStr}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">CODEC</span><span class="sv-v">${codec}</span></div>`+
+        (bitrate?`<div class="sv-row"><span class="sv-k">KBPS</span><span class="sv-v">${bitrate}</span></div>`:'')+
+        (buffer?`<div class="sv-row"><span class="sv-k">BUF</span><span class="sv-v">${buffer}</span></div>`:'')+
+        `<div class="sv-row"><span class="sv-k">RATE</span><span class="sv-v">${rate}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">STALL</span><span class="sv-v">${stalls}</span></div>`;
+    }
+
+    function drawStatsSparkline(ctx,canvas,data){
+      const w=canvas.width, h=canvas.height;
+      ctx.clearRect(0,0,w,h);
+      const shown=data.slice(-40);
+      if(shown.length<2) return;
+      const maxV=Math.max(...shown,30);
+      const stepX=w/(shown.length-1);
+      // fill
+      ctx.beginPath();
+      shown.forEach((v,i)=>{
+        const x=i*stepX;
+        const y=h-(v/maxV)*(h-2)-1;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.lineTo((shown.length-1)*stepX,h);
+      ctx.lineTo(0,h);
+      ctx.closePath();
+      ctx.fillStyle='rgba(61,166,255,0.13)';
+      ctx.fill();
+      // line
+      ctx.beginPath();
+      shown.forEach((v,i)=>{
+        const x=i*stepX;
+        const y=h-(v/maxV)*(h-2)-1;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle='rgba(61,166,255,0.75)';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      // 24fps reference line
+      const refY=h-(24/maxV)*(h-2)-1;
+      ctx.beginPath();
+      ctx.setLineDash([3,3]);
+      ctx.moveTo(0,refY); ctx.lineTo(w,refY);
+      ctx.strokeStyle='rgba(255,200,60,0.3)';
+      ctx.lineWidth=1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // --- MediaInfo metadata comparison ---
+
+    async function getMediaInfoInstance(){
+      if(mediaInfoInstance) return mediaInfoInstance;
+      if(typeof window.MediaInfo!=='function') throw new Error('MediaInfo not loaded');
+      const mi=await Promise.race([
+        new Promise((resolve,reject)=>{
+          try{
+            window.MediaInfo({
+              format:'JSON',
+              locateFile:(path)=>`https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.8/dist/${path}`
+            }, resolve, reject);
+          }catch(e){ reject(e); }
+        }),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error('MediaInfo WASM timeout')),20000))
+      ]);
+      mediaInfoInstance=mi;
+      return mi;
+    }
+
+    function buildFallbackRows(file, video){
+      const ext=(file.name.split('.').pop()||'').toUpperCase();
+      const res=video&&video.videoWidth&&video.videoHeight?`${video.videoWidth}×${video.videoHeight}`:'—';
+      const dur=video&&video.duration&&isFinite(video.duration)?fmtDuration(video.duration):'—';
+      return [
+        {s:'General',k:'filename',  label:'File Name',      v:file.name},
+        {s:'General',k:'container', label:'Container',      v:ext||'—'},
+        {s:'General',k:'duration',  label:'Duration',       v:dur},
+        {s:'General',k:'filesize',  label:'File Size',      v:fmtSize(file.size)},
+        {s:'General',k:'obitrate',  label:'Overall Bitrate',v:'—'},
+        {s:'Video',  k:'vcodec',    label:'Codec',          v:'—'},
+        {s:'Video',  k:'resolution',label:'Resolution',     v:res},
+        {s:'Video',  k:'fps',       label:'Frame Rate',     v:'—'},
+        {s:'Video',  k:'bitdepth',  label:'Bit Depth',      v:'—'},
+        {s:'Video',  k:'chroma',    label:'Chroma',         v:'—'},
+        {s:'Video',  k:'colorprim', label:'Color Primaries',v:'—'},
+        {s:'Video',  k:'transfer',  label:'Transfer',       v:'—'},
+        {s:'Video',  k:'hdr',       label:'HDR',            v:'—'},
+        {s:'Video',  k:'aspect',    label:'Aspect Ratio',   v:'—'},
+        {s:'Video',  k:'scantype',  label:'Scan Type',      v:'—'},
+        {s:'Video',  k:'vbitrate',  label:'Video Bitrate',  v:'—'},
+        {s:'Audio',  k:'acodec',    label:'Codec',          v:'—'},
+        {s:'Audio',  k:'channels',  label:'Channels',       v:'—'},
+        {s:'Audio',  k:'samplerate',label:'Sample Rate',    v:'—'},
+        {s:'Audio',  k:'abitdepth', label:'Bit Depth',      v:'—'},
+        {s:'Audio',  k:'abitrate',  label:'Audio Bitrate',  v:'—'},
+        {s:'Audio',  k:'lang',      label:'Language',       v:'—'},
+      ];
+    }
+
+    async function analyzeFileMetadata(file, index){
+      if(fileMetaAnalyzing[index]) return;
+      fileMetaAnalyzing[index]=true;
+      // Show fallback immediately so the panel is never blank
+      fileMetadata[index]=buildFallbackRows(file, videos[index]);
+      if(metaPanelVisible) refreshMetaTable();
+      try{
+        const mi=await getMediaInfoInstance();
+        const getSize=()=>file.size;
+        const readChunk=(chunkSize,offset)=>new Promise((res,rej)=>{
+          const reader=new FileReader();
+          reader.onload=e=>res(new Uint8Array(e.target.result));
+          reader.onerror=rej;
+          reader.readAsArrayBuffer(file.slice(offset,offset+chunkSize));
+        });
+        const raw=await mi.analyzeData(getSize,readChunk);
+        const parsed=JSON.parse(raw);
+        // Overwrite fallback with full MediaInfo data
+        fileMetadata[index]=extractMetaRows(file.name, parsed);
+      }catch(e){
+        console.warn('MediaInfo failed (using basic fallback):', e.message);
+        // fallback rows already set above — no change needed
+      }finally{
+        fileMetaAnalyzing[index]=false;
+        if(metaPanelVisible) refreshMetaTable();
+      }
+    }
+
+    function fmtDuration(sec){
+      if(!sec) return '—';
+      const s=parseFloat(sec);
+      const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=Math.floor(s%60);
+      const ms=Math.round((s%1)*1000);
+      if(h>0) return `${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+      return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;
+    }
+    function fmtSize(b){
+      if(!b) return '—';
+      const n=parseInt(b);
+      if(n>=1e9) return `${(n/1e9).toFixed(2)} GB`;
+      if(n>=1e6) return `${(n/1e6).toFixed(1)} MB`;
+      return `${(n/1e3).toFixed(0)} KB`;
+    }
+    function fmtKbps(bps){
+      if(!bps) return '—';
+      const n=parseInt(bps);
+      if(n>=1e6) return `${(n/1e6).toFixed(2)} Mbps`;
+      return `${Math.round(n/1000)} kbps`;
+    }
+
+    function extractMetaRows(filename, info){
+      const tracks=info?.media?.track||[];
+      const G=tracks.find(t=>t['@type']==='General')||{};
+      const V=tracks.find(t=>t['@type']==='Video')||{};
+      const A=tracks.find(t=>t['@type']==='Audio')||{};
+
+      const vCodec=[V.Format,V.Format_Profile].filter(Boolean).join(' ') || '—';
+      const res=V.Width&&V.Height?`${V.Width}×${V.Height}`:'—';
+      const fps=V.FrameRate?parseFloat(V.FrameRate).toFixed(3)+'':'—';
+      const aspectStr=V.DisplayAspectRatio_String||V.DisplayAspectRatio||'—';
+      const hdr=V.HDR_Format||V.HDR_Format_Compatibility||(V.colour_primaries&&V.colour_primaries.includes('2020')?'HDR':'');
+      const transfer=V.transfer_characteristics||V.transfer_characteristics_Original||'—';
+      const colorPrim=V.colour_primaries||'—';
+      const sr=A.SamplingRate?`${(parseInt(A.SamplingRate)/1000).toFixed(1)} kHz`:'—';
+      const aCh=A.Channels?`${A.Channels}ch`:'—';
+
+      return [
+        // ── General ──
+        {s:'General',k:'filename',  label:'File Name',     v:filename||'—'},
+        {s:'General',k:'container', label:'Container',     v:G.Format||'—'},
+        {s:'General',k:'duration',  label:'Duration',      v:fmtDuration(G.Duration)},
+        {s:'General',k:'filesize',  label:'File Size',     v:fmtSize(G.FileSize)},
+        {s:'General',k:'obitrate',  label:'Overall Bitrate',v:fmtKbps(G.OverallBitRate)},
+        // ── Video ──
+        {s:'Video',  k:'vcodec',    label:'Codec',         v:vCodec},
+        {s:'Video',  k:'resolution',label:'Resolution',    v:res},
+        {s:'Video',  k:'fps',       label:'Frame Rate',    v:fps},
+        {s:'Video',  k:'bitdepth',  label:'Bit Depth',     v:V.BitDepth?`${V.BitDepth}-bit`:'—'},
+        {s:'Video',  k:'chroma',    label:'Chroma',        v:V.ChromaSubsampling||'—'},
+        {s:'Video',  k:'colorprim', label:'Color Primaries',v:colorPrim},
+        {s:'Video',  k:'transfer',  label:'Transfer',      v:transfer},
+        {s:'Video',  k:'hdr',       label:'HDR',           v:hdr||'SDR'},
+        {s:'Video',  k:'aspect',    label:'Aspect Ratio',  v:aspectStr},
+        {s:'Video',  k:'scantype',  label:'Scan Type',     v:V.ScanType||'—'},
+        {s:'Video',  k:'vbitrate',  label:'Video Bitrate', v:fmtKbps(V.BitRate)},
+        // ── Audio ──
+        {s:'Audio',  k:'acodec',    label:'Codec',         v:A.Format||'—'},
+        {s:'Audio',  k:'channels',  label:'Channels',      v:aCh},
+        {s:'Audio',  k:'samplerate',label:'Sample Rate',   v:sr},
+        {s:'Audio',  k:'abitdepth', label:'Bit Depth',     v:A.BitDepth?`${A.BitDepth}-bit`:'—'},
+        {s:'Audio',  k:'abitrate',  label:'Audio Bitrate', v:fmtKbps(A.BitRate)},
+        {s:'Audio',  k:'lang',      label:'Language',      v:A.Language||'—'},
+      ];
+    }
+
+    function getMostCommon(arr){
+      const c={};
+      arr.forEach(v=>{ c[v]=(c[v]||0)+1; });
+      return Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0];
+    }
+
+    function toggleMetaPanel(){
+      metaPanelVisible=!metaPanelVisible;
+      const panel=document.getElementById('metaPanel');
+      const btn=document.getElementById('metaToggleBtn');
+      if(panel){ panel.classList.toggle('visible',metaPanelVisible); panel.setAttribute('aria-hidden',String(!metaPanelVisible)); }
+      if(btn) btn.classList.toggle('active',metaPanelVisible);
+      if(metaPanelVisible) refreshMetaTable();
+    }
+
+    function refreshMetaTable(){
+      const body=document.getElementById('metaPanelBody');
+      const hint=document.getElementById('metaPanelHint');
+      if(!body) return;
+
+      const activeIdx=getActivePlayerIndices();
+      const loadedIdx=activeIdx.filter(i=>fileMetadata[i]||fileMetaAnalyzing[i]);
+      const analyzingIdx=activeIdx.filter(i=>fileMetaAnalyzing[i]);
+
+      if(hint){
+        const diffCount=countDiffRows(activeIdx);
+        hint.textContent=analyzingIdx.length
+          ? `Analyzing ${analyzingIdx.map(i=>`P${PLAYER_IDS[i]}`).join(', ')}…`
+          : loadedIdx.length>1&&diffCount>0
+          ? `${diffCount} field${diffCount>1?'s':''} differ`
+          : '';
+      }
+
+      if(!loadedIdx.length){
+        body.innerHTML='<div class="meta-empty">Load video files to compare metadata.</div>';
+        return;
+      }
+
+      // Define canonical row order (use first loaded player's rows as template)
+      const templateIdx=activeIdx.find(i=>fileMetadata[i]);
+      if(templateIdx==null){
+        body.innerHTML=`<div class="meta-loading"><span class="mt-analyzing">⬡ Analyzing…</span></div>`;
+        return;
+      }
+      const rowDefs=fileMetadata[templateIdx];
+
+      // Build per-key value map: key → {label, section, values: {index→value}}
+      const rowMap={};
+      activeIdx.forEach(i=>{
+        if(!fileMetadata[i]) return;
+        fileMetadata[i].forEach(r=>{ if(!rowMap[r.k]) rowMap[r.k]={label:r.label,s:r.s,vals:{}}; rowMap[r.k].vals[i]=r.v; });
+      });
+
+      const readyIdx=activeIdx.filter(i=>fileMetadata[i]);
+
+      // Build table HTML
+      let html='<table class="meta-table"><thead><tr>';
+      html+='<th class="mt-field-header">Field</th>';
+      activeIdx.forEach(i=>{
+        const name=fileMetaAnalyzing[i]?`<span class="mt-analyzing">P${PLAYER_IDS[i]} ⬡</span>`:`P${PLAYER_IDS[i]}`;
+        html+=`<th>${name}</th>`;
+      });
+      html+='</tr></thead><tbody>';
+
+      let curSection='';
+      rowDefs.forEach(rowDef=>{
+        const row=rowMap[rowDef.k];
+        if(!row) return;
+
+        if(rowDef.s!==curSection){
+          curSection=rowDef.s;
+          const colspan=1+activeIdx.length;
+          html+=`<tr class="mt-section"><td colspan="${colspan}">${curSection}</td></tr>`;
+        }
+
+        const vals=readyIdx.map(i=>row.vals[i]||'—');
+        const mostCommon=getMostCommon(vals.filter(v=>v!=='—'));
+        const hasDiff=new Set(vals.filter(v=>v!=='—')).size>1;
+
+        html+='<tr class="mt-row">';
+        html+=`<td class="mt-label">${rowDef.label}</td>`;
+        activeIdx.forEach(i=>{
+          if(fileMetaAnalyzing[i]&&!fileMetadata[i]){
+            html+='<td class="mt-val mt-empty">—</td>'; return;
+          }
+          const v=row.vals[i]||'—';
+          const isDiff=hasDiff&&v!==mostCommon&&v!=='—';
+          const cls='mt-val'+(isDiff?' mt-diff':v==='—'?' mt-empty':'');
+          html+=`<td class="${cls}">${v}</td>`;
+        });
+        html+='</tr>';
+      });
+
+      html+='</tbody></table>';
+      body.innerHTML=html;
+    }
+
+    function countDiffRows(activeIdx){
+      const readyIdx=activeIdx.filter(i=>fileMetadata[i]);
+      if(readyIdx.length<2) return 0;
+      const template=fileMetadata[readyIdx[0]];
+      if(!template) return 0;
+      let count=0;
+      template.forEach(rowDef=>{
+        const vals=readyIdx.map(i=>{
+          const row=fileMetadata[i]?.find(r=>r.k===rowDef.k);
+          return row?.v||'—';
+        });
+        const unique=new Set(vals.filter(v=>v!=='—'));
+        if(unique.size>1) count++;
+      });
+      return count;
     }
 
     async function wcdDecodeFrameAt(index,targetSec){

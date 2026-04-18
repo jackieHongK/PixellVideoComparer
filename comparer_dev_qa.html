@@ -6,6 +6,7 @@
   <title>HLS Real-time Comparison Viewer DEV QA</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@latest/dist/mp4box.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.8/dist/mediainfo.min.js"></script>
   <link rel="stylesheet" href="./dev-assets/css/comparer.css" />
 </head>
 <body data-env="dev">
@@ -144,6 +145,8 @@
           <option value="1x3">1x3</option>
         </select>
       </label>
+      <button class="capture-button stats-toggle-btn" id="statsToggleBtn" type="button" aria-label="Toggle stats overlay">Stats</button>
+      <button class="capture-button stats-toggle-btn" id="metaToggleBtn" type="button" aria-label="Toggle metadata panel">Info</button>
       <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
       <div class="help">
         <div class="help-icon">?</div>
@@ -164,6 +167,18 @@
       </div>
     </div>
   
+    <!-- Metadata comparison panel -->
+    <div class="meta-panel" id="metaPanel" aria-hidden="true">
+      <div class="meta-panel-header">
+        <span class="meta-panel-title">File Metadata Comparison</span>
+        <span class="meta-panel-hint" id="metaPanelHint"></span>
+        <button class="meta-panel-close" id="metaPanelClose" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="meta-panel-body" id="metaPanelBody">
+        <div class="meta-empty">Load video files to compare metadata.</div>
+      </div>
+    </div>
+
     <footer class="footer-bar">
       <span>Pixell Video Comparer</span>
       <a href="./about.html">About</a>
