@@ -168,6 +168,10 @@ const PLAYER_IDS = [1,2,3,4];
     let ffmpegLoading=false;
     let ffmpegInstance=null;
 
+    // --- WebCodecs frame decoder (local MP4/MOV > 8s) ---
+    const WEBCODECS_SUPPORTED=typeof VideoDecoder!=='undefined';
+    const wcdStates=videos.map(()=>null);
+
 
     const metrics = videos.map(()=>({
       speedHistory:[],
@@ -214,6 +218,7 @@ const PLAYER_IDS = [1,2,3,4];
       initVideoMonitoring(video,index);
       video.addEventListener('play',()=>{
         updatePlayButtons();
+        wcdHideCanvas(index);
         const masterIndex=getActivePlayerIndices()[0];
         if(index===masterIndex) startRVFCSync(masterIndex);
       });
@@ -870,6 +875,7 @@ const PLAYER_IDS = [1,2,3,4];
       resetMetricState(index);
       const url=URL.createObjectURL(file);
       video._objectURL=url;
+      video._sourceFile=file; // for WebCodecs init
       video.src=url;
       showVideo(index);
       applyPlaybackOptimizations(video);
@@ -1203,7 +1209,7 @@ const PLAYER_IDS = [1,2,3,4];
     function clearVideoSource(video){
       if(!video) return;
       const idx=videos.indexOf(video);
-      if(idx>=0){ destroyFrameCache(idx); destroyThumbStrip(idx); }
+      if(idx>=0){ destroyFrameCache(idx); destroyThumbStrip(idx); destroyWebCodecs(idx); }
       destroyHls(video);
       if(video._objectURL){
         try{ URL.revokeObjectURL(video._objectURL); }catch(err){}
@@ -1587,6 +1593,166 @@ const PLAYER_IDS = [1,2,3,4];
       }
     }
 
+    // --- WebCodecs fast frame stepping ---
+
+    async function initWebCodecsForPlayer(index,file){
+      if(!WEBCODECS_SUPPORTED||typeof MP4Box==='undefined') return;
+      const ext=(file.name.split('.').pop()||'').toLowerCase();
+      if(!['mp4','mov','m4v'].includes(ext)) return;
+      destroyWebCodecs(index);
+      let fileBuffer;
+      try{ fileBuffer=await file.arrayBuffer(); }catch(e){ return; }
+
+      // First pass: get track info + codec description
+      let trackInfo,mp4desc;
+      await new Promise(resolve=>{
+        const mp4=MP4Box.createFile();
+        mp4.onReady=(info)=>{
+          trackInfo=info?.videoTracks?.[0];
+          if(trackInfo){
+            try{
+              const trak=mp4.getTrackById(trackInfo.id);
+              const entry=trak?.mdia?.minf?.stbl?.stsd?.entries?.[0];
+              const box=entry?.avcC??entry?.hvcC??entry?.vpcC??entry?.av1C;
+              if(box&&typeof DataStream!=='undefined'){
+                const ds=new DataStream(undefined,0,DataStream.BIG_ENDIAN);
+                box.write(ds);
+                mp4desc=new Uint8Array(ds.buffer,8);
+              }
+            }catch(e){}
+          }
+          resolve();
+        };
+        mp4.onError=resolve;
+        const buf=fileBuffer.slice(0);buf.fileStart=0;
+        mp4.appendBuffer(buf);mp4.flush();
+      });
+      if(!trackInfo) return;
+
+      // Check WebCodecs support for this codec
+      try{
+        const check=await VideoDecoder.isConfigSupported({
+          codec:trackInfo.codec,
+          codedWidth:trackInfo.video.width,
+          codedHeight:trackInfo.video.height,
+        });
+        if(!check.supported) return;
+      }catch(e){ return; }
+
+      // Second pass: extract sample metadata only (no data copy)
+      const samples=[];
+      await new Promise(resolve=>{
+        const mp4=MP4Box.createFile();
+        mp4.onReady=(info)=>{
+          const tid=info?.videoTracks?.[0]?.id;
+          if(!tid){ resolve(); return; }
+          mp4.setExtractionOptions(tid,null,{nbSamples:Infinity});
+          mp4.start();
+        };
+        mp4.onSamples=(_id,_user,batch)=>{
+          for(const s of batch){
+            samples.push({dts:s.dts,cts:s.cts,pts:s.dts+s.cts,
+              duration:s.duration,isSync:s.is_sync,offset:s.offset,size:s.size});
+            s.data=null;
+          }
+        };
+        mp4.onFlush=resolve;mp4.onError=resolve;
+        const buf=fileBuffer.slice(0);buf.fileStart=0;
+        mp4.appendBuffer(buf);mp4.flush();
+      });
+      if(!samples.length) return;
+      samples.sort((a,b)=>a.dts-b.dts);
+
+      // Canvas overlay (above video, z-index 3)
+      const box=boxes[index];
+      const canvas=document.createElement('canvas');
+      canvas.className='wcd-canvas';
+      canvas.style.display='none';
+      box.appendChild(canvas);
+
+      wcdStates[index]={
+        samples,timescale:trackInfo.timescale,
+        codecString:trackInfo.codec,
+        codedWidth:trackInfo.video.width,codedHeight:trackInfo.video.height,
+        description:mp4desc,fileBuffer,
+        canvas,ctx:canvas.getContext('2d'),
+        decodeGen:0,
+      };
+    }
+
+    function destroyWebCodecs(index){
+      const state=wcdStates[index];
+      if(!state) return;
+      state.canvas?.remove();
+      wcdStates[index]=null;
+    }
+
+    function wcdHideCanvas(index){
+      const st=wcdStates[index];
+      if(st?.canvas) st.canvas.style.display='none';
+    }
+
+    async function wcdDecodeFrameAt(index,targetSec){
+      const state=wcdStates[index];
+      if(!state||!state.samples.length) return false;
+      const gen=++state.decodeGen;
+      const{samples,timescale,codecString,codedWidth,codedHeight,description,fileBuffer}=state;
+      const targetPts=Math.round(targetSec*timescale);
+
+      // Last keyframe with pts <= target
+      let kfIdx=0;
+      for(let i=samples.length-1;i>=0;i--){
+        if(samples[i].isSync&&samples[i].pts<=targetPts){kfIdx=i;break;}
+      }
+      // Last sample with pts <= target
+      let endIdx=samples.length-1;
+      for(let i=kfIdx;i<samples.length;i++){
+        if(samples[i].pts>targetPts){endIdx=Math.max(i-1,kfIdx);break;}
+      }
+
+      let bestFrame=null,bestDiff=Infinity;
+      const decoder=new VideoDecoder({
+        output:(frame)=>{
+          if(gen!==state.decodeGen){frame.close();return;}
+          const diff=Math.abs(frame.timestamp/1e6-targetSec);
+          if(diff<bestDiff){bestDiff=diff;bestFrame?.close();bestFrame=frame;}
+          else frame.close();
+        },
+        error:()=>{},
+      });
+
+      try{
+        decoder.configure({
+          codec:codecString,codedWidth,codedHeight,
+          ...(description?{description}:{}),
+        });
+        for(let i=kfIdx;i<=endIdx;i++){
+          if(gen!==state.decodeGen) break;
+          const s=samples[i];
+          decoder.decode(new EncodedVideoChunk({
+            type:s.isSync?'key':'delta',
+            timestamp:Math.round(s.pts/timescale*1e6),
+            duration:Math.round(s.duration/timescale*1e6),
+            data:new Uint8Array(fileBuffer,s.offset,s.size),
+          }));
+        }
+        await decoder.flush();
+      }catch(e){
+        bestFrame?.close();bestFrame=null;
+      }finally{
+        try{decoder.close();}catch(e){}
+      }
+
+      if(!bestFrame||gen!==state.decodeGen){bestFrame?.close();return false;}
+      const box=boxes[index];
+      state.canvas.width=box.clientWidth||codedWidth;
+      state.canvas.height=box.clientHeight||codedHeight;
+      state.ctx.drawImage(bestFrame,0,0,state.canvas.width,state.canvas.height);
+      bestFrame.close();
+      state.canvas.style.display='block';
+      return true;
+    }
+
     // --- Timeline thumbnail strip ---
 
     // Extract thumbnails from existing frame cache (instant, no extra decode)
@@ -1807,8 +1973,10 @@ const PLAYER_IDS = [1,2,3,4];
         if(!hasVideoSource(v)) return;
         if(!v.paused) v.pause();
         const newTime=Math.max(0,v.currentTime+(forward?step:-step));
-        // For cached videos: draw from cache immediately (no decode wait)
-        drawCacheFrameAtTime(index,newTime);
+        if(!drawCacheFrameAtTime(index,newTime)&&wcdStates[index]){
+          // WebCodecs path: async GPU decode for long non-cached videos
+          wcdDecodeFrameAt(index,newTime).catch(()=>{});
+        }
         try{ v.currentTime=newTime; }catch(e){}
       });
       updateTimelineUI(true);
@@ -2069,6 +2237,9 @@ const PLAYER_IDS = [1,2,3,4];
         if(Number.isFinite(d)&&d>FRAME_CACHE_MAX_DURATION&&video._objectURL){
           if(!thumbStrips[index].frames.length&&!thumbStrips[index].building){
             buildThumbStripBackground(video,index).catch(()=>{});
+          }
+          if(!wcdStates[index]&&WEBCODECS_SUPPORTED&&video._sourceFile){
+            initWebCodecsForPlayer(index,video._sourceFile).catch(()=>{});
           }
         }
       },{once:false});
