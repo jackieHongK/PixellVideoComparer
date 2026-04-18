@@ -157,6 +157,12 @@ const PLAYER_IDS = [1,2,3,4];
     const frameCaches=videos.map(()=>null);
     const cacheRafIds=videos.map(()=>null);
 
+    // --- Timeline thumbnail strip ---
+    const THUMB_W=160, THUMB_H=90;
+    const THUMB_MAX_COUNT=30; // max thumbnails per video strip
+    const thumbStrips=videos.map(()=>({frames:[],building:false}));
+    const thumbPopups=videos.map(()=>null); // {popup, canvas, ctx, timeLabel}
+
     // --- FFmpeg codec fallback ---
     let ffmpegReady=false;
     let ffmpegLoading=false;
@@ -254,6 +260,8 @@ const PLAYER_IDS = [1,2,3,4];
       captureStillButton.addEventListener('click',()=>captureAllVisibleVideoStills());
     }
     applyModeState(DEFAULT_LAYOUT_ID);
+    // Set up timeline thumbnail hover for all players
+    videos.forEach((_,i)=>setupTimelineThumb(i));
 
 
     boxes.forEach((box,i)=>{
@@ -1195,7 +1203,7 @@ const PLAYER_IDS = [1,2,3,4];
     function clearVideoSource(video){
       if(!video) return;
       const idx=videos.indexOf(video);
-      if(idx>=0) destroyFrameCache(idx);
+      if(idx>=0){ destroyFrameCache(idx); destroyThumbStrip(idx); }
       destroyHls(video);
       if(video._objectURL){
         try{ URL.revokeObjectURL(video._objectURL); }catch(err){}
@@ -1517,6 +1525,8 @@ const PLAYER_IDS = [1,2,3,4];
           boxes[index].appendChild(canvas);
           cache.canvas=canvas;
           startCacheOverlay(index,cache);
+          // Extract thumbnail strip from cached frames (no extra decode needed)
+          extractThumbStripFromCache(index).catch(()=>{});
         }
       }
 
@@ -1575,6 +1585,131 @@ const PLAYER_IDS = [1,2,3,4];
         box.querySelectorAll('.cache-build-indicator').forEach(el=>el.remove());
         box.querySelectorAll('.frame-cache-canvas').forEach(el=>el.remove());
       }
+    }
+
+    // --- Timeline thumbnail strip ---
+
+    // Extract thumbnails from existing frame cache (instant, no extra decode)
+    async function extractThumbStripFromCache(index){
+      const cache=frameCaches[index];
+      if(!cache?.ready||!cache.frames.length) return;
+      const strip=thumbStrips[index];
+      strip.frames.forEach(f=>{ try{ f.bitmap.close(); }catch(e){} });
+      strip.frames=[];
+      const frames=cache.frames;
+      const step=Math.max(1,Math.floor(frames.length/THUMB_MAX_COUNT));
+      for(let i=0;i<frames.length;i+=step){
+        const src=frames[i];
+        try{
+          const bm=await createImageBitmap(src.bitmap,{resizeWidth:THUMB_W,resizeHeight:THUMB_H,resizeQuality:'low'})
+            .catch(()=>createImageBitmap(src.bitmap));
+          strip.frames.push({time:src.time,bitmap:bm});
+        }catch(e){}
+      }
+    }
+
+    // Build thumbnail strip via background seeks on a hidden video element (for videos > FRAME_CACHE_MAX_DURATION)
+    async function buildThumbStripBackground(video,index){
+      if(!video._objectURL) return; // local blob only — no CORS risk
+      const strip=thumbStrips[index];
+      if(strip.building||strip.frames.length>=5) return;
+      const duration=video.duration;
+      if(!duration||!Number.isFinite(duration)) return;
+      strip.building=true;
+
+      const tv=document.createElement('video');
+      tv.style.cssText='position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:-9999px;left:-9999px;';
+      tv.muted=true; tv.preload='auto';
+      document.body.appendChild(tv);
+      tv.src=video._objectURL;
+
+      try{
+        await Promise.race([
+          new Promise(r=>tv.addEventListener('loadedmetadata',r,{once:true})),
+          new Promise(r=>setTimeout(r,6000))
+        ]);
+        const count=Math.min(THUMB_MAX_COUNT,Math.max(5,Math.ceil(duration/3)));
+        for(let i=0;i<=count;i++){
+          if(thumbStrips[index]!==strip) break; // source changed — abort
+          const t=Math.min(duration-0.1,(i/count)*duration);
+          tv.currentTime=t;
+          await Promise.race([
+            new Promise(r=>tv.addEventListener('seeked',r,{once:true})),
+            new Promise(r=>setTimeout(r,3000))
+          ]);
+          try{
+            const bm=await createImageBitmap(tv,{resizeWidth:THUMB_W,resizeHeight:THUMB_H,resizeQuality:'low'})
+              .catch(()=>createImageBitmap(tv));
+            if(thumbStrips[index]===strip){
+              strip.frames.push({time:t,bitmap:bm});
+              strip.frames.sort((a,b)=>a.time-b.time);
+            }
+          }catch(e){}
+        }
+      }catch(e){}finally{
+        tv.remove();
+        if(thumbStrips[index]===strip) strip.building=false;
+      }
+    }
+
+    // Get nearest available thumbnail for a given time
+    function getThumbAtTime(index,time){
+      const frames=thumbStrips[index].frames;
+      if(!frames.length) return null;
+      let lo=0,hi=frames.length-1,idx=0;
+      while(lo<=hi){ const mid=(lo+hi)>>1; if(frames[mid].time<=time){idx=mid;lo=mid+1;}else hi=mid-1; }
+      return frames[idx]?.bitmap||null;
+    }
+
+    // Destroy thumb strip and free ImageBitmap memory
+    function destroyThumbStrip(index){
+      const strip=thumbStrips[index];
+      strip.frames.forEach(f=>{ try{ f.bitmap.close(); }catch(e){} });
+      strip.frames=[];
+      strip.building=false;
+    }
+
+    // Set up timeline mousemove → show thumbnail popup
+    function setupTimelineThumb(index){
+      const controls=controlSets[index];
+      if(!controls?.timeline||!controls.playbar) return;
+      const timeline=controls.timeline;
+
+      // Create popup element once
+      if(!thumbPopups[index]){
+        const popup=document.createElement('div');
+        popup.className='timeline-thumb-popup';
+        const canvas=document.createElement('canvas');
+        canvas.className='timeline-thumb-canvas';
+        canvas.width=THUMB_W; canvas.height=THUMB_H;
+        const timeLabel=document.createElement('span');
+        timeLabel.className='timeline-thumb-time';
+        popup.appendChild(canvas);
+        popup.appendChild(timeLabel);
+        controls.playbar.appendChild(popup);
+        thumbPopups[index]={popup,canvas,ctx:canvas.getContext('2d'),timeLabel};
+      }
+      const pp=thumbPopups[index];
+
+      timeline.addEventListener('mousemove',e=>{
+        const rect=timeline.getBoundingClientRect();
+        const ratio=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+        const range=getSeekRange(videos[index]);
+        if(!range){ pp.popup.style.display='none'; return; }
+        const time=range.start+(range.end-range.start)*ratio;
+        const bm=getThumbAtTime(index,time);
+        if(!bm){ pp.popup.style.display='none'; return; }
+        pp.ctx.drawImage(bm,0,0,THUMB_W,THUMB_H);
+        pp.timeLabel.textContent=formatTimecode(time-range.start);
+        // Horizontal clamp so popup stays inside playbar
+        const pbRect=controls.playbar.getBoundingClientRect();
+        const relX=e.clientX-pbRect.left;
+        const half=THUMB_W/2+4;
+        const clamped=Math.max(half,Math.min(relX,pbRect.width-half));
+        pp.popup.style.left=clamped+'px';
+        pp.popup.style.display='flex';
+      });
+      timeline.addEventListener('mouseleave',()=>{ pp.popup.style.display='none'; });
     }
 
     // --- FFmpeg codec fallback ---
@@ -1651,13 +1786,30 @@ const PLAYER_IDS = [1,2,3,4];
       if(!document.fullscreenElement) target.requestFullscreen();
       else document.exitFullscreen();
     }
+    // Draw a specific time from frame cache directly to canvas — instant visual feedback
+    function drawCacheFrameAtTime(index,time){
+      const cache=frameCaches[index];
+      if(!cache?.ready||!cache.canvas) return false;
+      const frames=cache.frames;
+      if(!frames.length) return false;
+      const ctx=cache.canvas.getContext('2d');
+      if(!ctx) return false;
+      let lo=0,hi=frames.length-1,idx=0;
+      while(lo<=hi){ const mid=(lo+hi)>>1; if(frames[mid].time<=time){idx=mid;lo=mid+1;}else hi=mid-1; }
+      if(frames[idx]) ctx.drawImage(frames[idx].bitmap,0,0,cache.canvas.width,cache.canvas.height);
+      return true;
+    }
+
     function stepFrames(shift,forward){
       const step=(shift?10:1)/30;
       getActivePlayerIndices().forEach(index=>{
         const v=videos[index];
         if(!hasVideoSource(v)) return;
         if(!v.paused) v.pause();
-        v.currentTime+=forward?step:-step;
+        const newTime=Math.max(0,v.currentTime+(forward?step:-step));
+        // For cached videos: draw from cache immediately (no decode wait)
+        drawCacheFrameAtTime(index,newTime);
+        try{ v.currentTime=newTime; }catch(e){}
       });
       updateTimelineUI(true);
     }
@@ -1909,10 +2061,17 @@ const PLAYER_IDS = [1,2,3,4];
         updateMonitorUI(index);
         updateTimelineForPlayer(index,true);
       });
-      // Start frame cache build once playback is stable (canplaythrough = fully buffered)
+      // Start frame cache + thumbnail strip once fully buffered
       video.addEventListener('canplaythrough',()=>{
         if(!frameCaches[index]) startFrameCacheBuild(video,index);
-      },{once:false}); // re-fires on src change, which is fine (destroyFrameCache called on clearVideoSource)
+        // For longer local files not covered by frame cache, build thumbnail strip in background
+        const d=video.duration;
+        if(Number.isFinite(d)&&d>FRAME_CACHE_MAX_DURATION&&video._objectURL){
+          if(!thumbStrips[index].frames.length&&!thumbStrips[index].building){
+            buildThumbStripBackground(video,index).catch(()=>{});
+          }
+        }
+      },{once:false});
       video.addEventListener('durationchange',()=>updateTimelineForPlayer(index,true));
       ['waiting','stalled'].forEach(evt=>{
         video.addEventListener(evt,()=>{
