@@ -147,12 +147,15 @@ const PLAYER_IDS = [1,2,3,4];
 
     // --- rVFC sync ---
     const RVFC_SUPPORTED='requestVideoFrameCallback' in HTMLVideoElement.prototype;
-    const RVFC_DRIFT_THRESHOLD=0.05; // 50ms
+    const RVFC_DRIFT_THRESHOLD=0.5; // 500ms: only correct large drifts to avoid seek-stutter
     let rVFCHandle=null;
     let rVFCMasterIndex=null;
 
-    // --- Perf mode (slave-seeker: only master plays, slaves seek) ---
-    let perfModeActive=false;
+    // --- Frame cache (seamless loop for short local videos) ---
+    const FRAME_CACHE_MAX_DURATION=8; // seconds: only cache if <= this length
+    const FRAME_CACHE_MAX_WIDTH=480;  // cap resolution to limit memory (~125MB per player max)
+    const frameCaches=videos.map(()=>null);
+    const cacheRafIds=videos.map(()=>null);
 
     // --- FFmpeg codec fallback ---
     let ffmpegReady=false;
@@ -250,8 +253,6 @@ const PLAYER_IDS = [1,2,3,4];
     if(captureStillButton){
       captureStillButton.addEventListener('click',()=>captureAllVisibleVideoStills());
     }
-    const perfModeBtn=document.getElementById('perfModeBtn');
-    if(perfModeBtn) perfModeBtn.addEventListener('click',togglePerfMode);
     applyModeState(DEFAULT_LAYOUT_ID);
 
 
@@ -1193,6 +1194,8 @@ const PLAYER_IDS = [1,2,3,4];
 
     function clearVideoSource(video){
       if(!video) return;
+      const idx=videos.indexOf(video);
+      if(idx>=0) destroyFrameCache(idx);
       destroyHls(video);
       if(video._objectURL){
         try{ URL.revokeObjectURL(video._objectURL); }catch(err){}
@@ -1425,8 +1428,8 @@ const PLAYER_IDS = [1,2,3,4];
           if(i===rVFCMasterIndex) return;
           const slave=videos[i];
           if(!hasVideoSource(slave)) return;
-          if(perfModeActive && !slave.paused) slave.pause();
           const drift=Math.abs(slave.currentTime-masterTime);
+          // Only correct large drifts (> 500ms) to avoid constant seek-stutter
           if(drift>RVFC_DRIFT_THRESHOLD){
             try{ slave.currentTime=masterTime; }catch(e){}
           }
@@ -1454,30 +1457,123 @@ const PLAYER_IDS = [1,2,3,4];
       rVFCMasterIndex=null;
     }
 
-    // --- Perf mode toggle ---
-    function togglePerfMode(){
-      perfModeActive=!perfModeActive;
-      const btn=document.getElementById('perfModeBtn');
-      if(btn) btn.classList.toggle('active',perfModeActive);
-      if(!perfModeActive){
-        // Resume slaves when exiting perf mode
-        const activeIndices=getActivePlayerIndices();
-        const masterIndex=activeIndices[0];
-        const master=videos[masterIndex];
-        activeIndices.forEach(i=>{
-          if(i===masterIndex) return;
-          const slave=videos[i];
-          if(hasVideoSource(slave) && slave.paused && master && !master.paused){
-            safePlay(slave);
-          }
-        });
+    // --- Frame cache: seamless loop for short local-file videos ---
+    async function captureFrameBitmap(video,targetW,targetH){
+      try{
+        return await createImageBitmap(video,{resizeWidth:targetW,resizeHeight:targetH,resizeQuality:'medium'});
+      }catch(e){
+        // Fallback: OffscreenCanvas resize
+        try{
+          const oc=new OffscreenCanvas(targetW,targetH);
+          oc.getContext('2d').drawImage(video,0,0,targetW,targetH);
+          return oc.transferToImageBitmap();
+        }catch(e2){
+          return createImageBitmap(video);
+        }
       }
-      // Restart rVFC with new mode
-      const activeIndices=getActivePlayerIndices();
-      if(activeIndices.length){
-        const masterIndex=activeIndices[0];
-        const master=videos[masterIndex];
-        if(master && !master.paused) startRVFCSync(masterIndex);
+    }
+
+    function startFrameCacheBuild(video,index){
+      if(!RVFC_SUPPORTED) return;
+      if(!video._objectURL) return; // local blob only — avoid CORS issues
+      const duration=video.duration;
+      if(!duration||!Number.isFinite(duration)||duration>FRAME_CACHE_MAX_DURATION) return;
+      if(frameCaches[index]&&frameCaches[index].ready) return; // already cached
+
+      const nativeW=video.videoWidth||960;
+      const nativeH=video.videoHeight||540;
+      const scale=Math.min(1,FRAME_CACHE_MAX_WIDTH/nativeW);
+      const tw=Math.max(2,Math.round(nativeW*scale));
+      const th=Math.max(2,Math.round(nativeH*scale));
+
+      const cache={frames:[],ready:false,duration,tw,th};
+      frameCaches[index]=cache;
+
+      // Show building indicator
+      const indicator=document.createElement('div');
+      indicator.className='cache-build-indicator';
+      indicator.textContent='Caching…';
+      boxes[index].appendChild(indicator);
+
+      let lastTime=-1;
+
+      function capture(_,meta){
+        if(!frameCaches[index]||frameCaches[index]!==cache) return; // cleared
+        const t=meta.mediaTime;
+        if(t-lastTime>=1/60-0.001){ // ~60fps max
+          lastTime=t;
+          captureFrameBitmap(video,tw,th).then(bitmap=>{
+            if(frameCaches[index]===cache) cache.frames.push({time:t,bitmap});
+          }).catch(()=>{});
+        }
+        if(t<duration-0.02){
+          video.requestVideoFrameCallback(capture);
+        }else{
+          cache.ready=true;
+          indicator.remove();
+          // Insert canvas overlay into box
+          const canvas=document.createElement('canvas');
+          canvas.className='frame-cache-canvas';
+          boxes[index].appendChild(canvas);
+          cache.canvas=canvas;
+          startCacheOverlay(index,cache);
+        }
+      }
+
+      video.requestVideoFrameCallback(capture);
+    }
+
+    function startCacheOverlay(index,cache){
+      const canvas=cache.canvas;
+      if(!canvas) return;
+      stopCacheOverlay(index); // cancel existing RAF
+
+      const box=boxes[index];
+      const rect=box.getBoundingClientRect();
+      canvas.width=Math.round(rect.width)||cache.tw;
+      canvas.height=Math.round(rect.height)||cache.th;
+      const ctx=canvas.getContext('2d',{willReadFrequently:false,alpha:false});
+
+      function raf(){
+        if(frameCaches[index]!==cache){ cacheRafIds[index]=null; return; }
+        const t=videos[index].currentTime;
+        const frames=cache.frames;
+        if(frames.length){
+          // Binary search: find last frame with time <= t
+          let lo=0,hi=frames.length-1,idx=0;
+          while(lo<=hi){
+            const mid=(lo+hi)>>1;
+            if(frames[mid].time<=t){idx=mid;lo=mid+1;}
+            else hi=mid-1;
+          }
+          ctx.drawImage(frames[idx].bitmap,0,0,canvas.width,canvas.height);
+        }
+        cacheRafIds[index]=requestAnimationFrame(raf);
+      }
+      cacheRafIds[index]=requestAnimationFrame(raf);
+    }
+
+    function stopCacheOverlay(index){
+      if(cacheRafIds[index]!==null){
+        cancelAnimationFrame(cacheRafIds[index]);
+        cacheRafIds[index]=null;
+      }
+    }
+
+    function destroyFrameCache(index){
+      stopCacheOverlay(index);
+      const cache=frameCaches[index];
+      if(cache){
+        if(cache.canvas) cache.canvas.remove();
+        cache.frames.forEach(f=>{ try{ f.bitmap.close(); }catch(e){} });
+        cache.frames=[];
+      }
+      frameCaches[index]=null;
+      // Remove any stray build indicators
+      const box=boxes[index];
+      if(box){
+        box.querySelectorAll('.cache-build-indicator').forEach(el=>el.remove());
+        box.querySelectorAll('.frame-cache-canvas').forEach(el=>el.remove());
       }
     }
 
@@ -1813,6 +1909,10 @@ const PLAYER_IDS = [1,2,3,4];
         updateMonitorUI(index);
         updateTimelineForPlayer(index,true);
       });
+      // Start frame cache build once playback is stable (canplaythrough = fully buffered)
+      video.addEventListener('canplaythrough',()=>{
+        if(!frameCaches[index]) startFrameCacheBuild(video,index);
+      },{once:false}); // re-fires on src change, which is fine (destroyFrameCache called on clearVideoSource)
       video.addEventListener('durationchange',()=>updateTimelineForPlayer(index,true));
       ['waiting','stalled'].forEach(evt=>{
         video.addEventListener(evt,()=>{

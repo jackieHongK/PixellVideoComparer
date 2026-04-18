@@ -1135,28 +1135,31 @@ body[data-env="dev"] .dev-build-badge {
       font-weight: 400;
     }
 
-    /* Perf mode button */
-    .perf-mode-btn {
-      padding: 5px 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,160,50,0.45);
-      background: rgba(60,30,0,0.55);
-      color: #ffc97a;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-      letter-spacing: 0.06em;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    /* Frame cache canvas overlay (seamless loop playback) */
+    .frame-cache-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 2;
+      pointer-events: none;
+      object-fit: contain;
     }
-    .perf-mode-btn:hover {
-      background: rgba(90,50,0,0.65);
-      border-color: rgba(255,180,80,0.7);
-    }
-    .perf-mode-btn.active {
-      background: rgba(200,100,0,0.55);
-      border-color: rgba(255,160,50,0.9);
-      color: #fff3d4;
-      box-shadow: 0 0 8px rgba(255,140,30,0.35);
+
+    /* Cache build progress indicator */
+    .cache-build-indicator {
+      position: absolute;
+      bottom: 8px;
+      right: 10px;
+      z-index: 6;
+      font-size: 10px;
+      color: rgba(180,210,255,0.7);
+      background: rgba(0,0,0,0.45);
+      padding: 2px 7px;
+      border-radius: 4px;
+      pointer-events: none;
+      letter-spacing: 0.04em;
     }
 
     .footer-bar {
