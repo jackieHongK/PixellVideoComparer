@@ -158,8 +158,14 @@ const PLAYER_IDS = [1,2,3,4];
     const cacheRafIds=videos.map(()=>null);
 
     // --- Timeline thumbnail strip ---
-    const THUMB_W=160, THUMB_H=90;
+    const THUMB_W=160, THUMB_H=90; // max bounding box; actual dims preserve aspect ratio
     const THUMB_MAX_COUNT=30; // max thumbnails per video strip
+
+    function thumbDims(srcW, srcH){
+      if(!srcW||!srcH) return {w:THUMB_W,h:THUMB_H};
+      const r=srcW/srcH;
+      return r>=THUMB_W/THUMB_H ? {w:THUMB_W,h:Math.round(THUMB_W/r)} : {w:Math.round(THUMB_H*r),h:THUMB_H};
+    }
     const thumbStrips=videos.map(()=>({frames:[],building:false}));
     const thumbPopups=videos.map(()=>null); // {popup, canvas, ctx, timeLabel}
 
@@ -2153,7 +2159,8 @@ const PLAYER_IDS = [1,2,3,4];
       for(let i=0;i<frames.length;i+=step){
         const src=frames[i];
         try{
-          const bm=await createImageBitmap(src.bitmap,{resizeWidth:THUMB_W,resizeHeight:THUMB_H,resizeQuality:'low'})
+          const {w,h}=thumbDims(src.bitmap.width,src.bitmap.height);
+          const bm=await createImageBitmap(src.bitmap,{resizeWidth:w,resizeHeight:h,resizeQuality:'low'})
             .catch(()=>createImageBitmap(src.bitmap));
           strip.frames.push({time:src.time,bitmap:bm});
         }catch(e){}
@@ -2190,7 +2197,8 @@ const PLAYER_IDS = [1,2,3,4];
             new Promise(r=>setTimeout(r,3000))
           ]);
           try{
-            const bm=await createImageBitmap(tv,{resizeWidth:THUMB_W,resizeHeight:THUMB_H,resizeQuality:'low'})
+            const {w,h}=thumbDims(tv.videoWidth,tv.videoHeight);
+            const bm=await createImageBitmap(tv,{resizeWidth:w,resizeHeight:h,resizeQuality:'low'})
               .catch(()=>createImageBitmap(tv));
             if(thumbStrips[index]===strip){
               strip.frames.push({time:t,bitmap:bm});
@@ -2233,7 +2241,7 @@ const PLAYER_IDS = [1,2,3,4];
         popup.className='timeline-thumb-popup';
         const canvas=document.createElement('canvas');
         canvas.className='timeline-thumb-canvas';
-        canvas.width=THUMB_W; canvas.height=THUMB_H;
+        canvas.width=THUMB_W; canvas.height=THUMB_H; // initial; resized per-frame on draw
         const timeLabel=document.createElement('span');
         timeLabel.className='timeline-thumb-time';
         popup.appendChild(canvas);
@@ -2251,12 +2259,15 @@ const PLAYER_IDS = [1,2,3,4];
         const time=range.start+(range.end-range.start)*ratio;
         const bm=getThumbAtTime(index,time);
         if(!bm){ pp.popup.style.display='none'; return; }
-        pp.ctx.drawImage(bm,0,0,THUMB_W,THUMB_H);
+        if(pp.canvas.width!==bm.width||pp.canvas.height!==bm.height){
+          pp.canvas.width=bm.width; pp.canvas.height=bm.height;
+        }
+        pp.ctx.drawImage(bm,0,0,bm.width,bm.height);
         pp.timeLabel.textContent=formatTimecode(time-range.start);
         // Horizontal clamp so popup stays inside playbar
         const pbRect=controls.playbar.getBoundingClientRect();
         const relX=e.clientX-pbRect.left;
-        const half=THUMB_W/2+4;
+        const half=pp.canvas.width/2+4;
         const clamped=Math.max(half,Math.min(relX,pbRect.width-half));
         pp.popup.style.left=clamped+'px';
         pp.popup.style.display='flex';

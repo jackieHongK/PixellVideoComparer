@@ -1184,8 +1184,6 @@ body[data-env="dev"] .dev-build-badge {
     }
     .timeline-thumb-canvas {
       display: block;
-      width: 160px;
-      height: 90px;
       background: #000;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 3px;
@@ -1385,6 +1383,7 @@ body[data-env="dev"] .dev-build-badge {
     .meta-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       font-size: 12px;
       font-family: 'Inter', monospace;
     }
@@ -1400,11 +1399,13 @@ body[data-env="dev"] .dev-build-badge {
       color: rgba(140,200,255,0.8);
       letter-spacing: 0.06em;
       border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-right: 1px solid rgba(255,255,255,0.07);
       white-space: nowrap;
     }
+    .meta-table thead th:last-child { border-right: none; }
     .meta-table thead .mt-field-header {
       text-align: left;
-      min-width: 120px;
+      width: 140px;
       color: rgba(255,255,255,0.35);
     }
     .meta-table .mt-section td {
@@ -1419,20 +1420,25 @@ body[data-env="dev"] .dev-build-badge {
     }
     .meta-table .mt-row td {
       padding: 5px 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      white-space: nowrap;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-right: 1px solid rgba(255,255,255,0.07);
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      vertical-align: top;
     }
+    .meta-table .mt-row td:last-child { border-right: none; }
     .mt-label {
       color: rgba(200,220,240,0.55);
       font-size: 11px;
       font-weight: 500;
-      min-width: 120px;
+      width: 140px;
     }
     .mt-val {
       color: rgba(230,245,255,0.88);
       text-align: center;
       font-variant-numeric: tabular-nums;
-      min-width: 130px;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .mt-val.mt-empty { color: rgba(255,255,255,0.2); }
     /* Diff cell — amber shading when value differs across players */
