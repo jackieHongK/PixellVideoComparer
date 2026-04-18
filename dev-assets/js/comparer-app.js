@@ -1874,19 +1874,57 @@ const PLAYER_IDS = [1,2,3,4];
 
     async function getMediaInfoInstance(){
       if(mediaInfoInstance) return mediaInfoInstance;
-      return new Promise((resolve,reject)=>{
-        if(typeof window.MediaInfo!=='function'){ reject(new Error('MediaInfo not loaded')); return; }
-        window.MediaInfo({
-          format:'JSON',
-          locateFile:(path)=>`https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.8/dist/${path}`
-        }, resolve, reject);
-      }).then(mi=>{ mediaInfoInstance=mi; return mi; });
+      if(typeof window.MediaInfo!=='function') throw new Error('MediaInfo not loaded');
+      const mi=await Promise.race([
+        new Promise((resolve,reject)=>{
+          try{
+            window.MediaInfo({
+              format:'JSON',
+              locateFile:(path)=>`https://cdn.jsdelivr.net/npm/mediainfo.js@0.3.8/dist/${path}`
+            }, resolve, reject);
+          }catch(e){ reject(e); }
+        }),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error('MediaInfo WASM timeout')),20000))
+      ]);
+      mediaInfoInstance=mi;
+      return mi;
+    }
+
+    function buildFallbackRows(file, video){
+      const ext=(file.name.split('.').pop()||'').toUpperCase();
+      const res=video&&video.videoWidth&&video.videoHeight?`${video.videoWidth}×${video.videoHeight}`:'—';
+      const dur=video&&video.duration&&isFinite(video.duration)?fmtDuration(video.duration):'—';
+      return [
+        {s:'General',k:'filename',  label:'File Name',      v:file.name},
+        {s:'General',k:'container', label:'Container',      v:ext||'—'},
+        {s:'General',k:'duration',  label:'Duration',       v:dur},
+        {s:'General',k:'filesize',  label:'File Size',      v:fmtSize(file.size)},
+        {s:'General',k:'obitrate',  label:'Overall Bitrate',v:'—'},
+        {s:'Video',  k:'vcodec',    label:'Codec',          v:'—'},
+        {s:'Video',  k:'resolution',label:'Resolution',     v:res},
+        {s:'Video',  k:'fps',       label:'Frame Rate',     v:'—'},
+        {s:'Video',  k:'bitdepth',  label:'Bit Depth',      v:'—'},
+        {s:'Video',  k:'chroma',    label:'Chroma',         v:'—'},
+        {s:'Video',  k:'colorprim', label:'Color Primaries',v:'—'},
+        {s:'Video',  k:'transfer',  label:'Transfer',       v:'—'},
+        {s:'Video',  k:'hdr',       label:'HDR',            v:'—'},
+        {s:'Video',  k:'aspect',    label:'Aspect Ratio',   v:'—'},
+        {s:'Video',  k:'scantype',  label:'Scan Type',      v:'—'},
+        {s:'Video',  k:'vbitrate',  label:'Video Bitrate',  v:'—'},
+        {s:'Audio',  k:'acodec',    label:'Codec',          v:'—'},
+        {s:'Audio',  k:'channels',  label:'Channels',       v:'—'},
+        {s:'Audio',  k:'samplerate',label:'Sample Rate',    v:'—'},
+        {s:'Audio',  k:'abitdepth', label:'Bit Depth',      v:'—'},
+        {s:'Audio',  k:'abitrate',  label:'Audio Bitrate',  v:'—'},
+        {s:'Audio',  k:'lang',      label:'Language',       v:'—'},
+      ];
     }
 
     async function analyzeFileMetadata(file, index){
       if(fileMetaAnalyzing[index]) return;
       fileMetaAnalyzing[index]=true;
-      fileMetadata[index]=null;
+      // Show fallback immediately so the panel is never blank
+      fileMetadata[index]=buildFallbackRows(file, videos[index]);
       if(metaPanelVisible) refreshMetaTable();
       try{
         const mi=await getMediaInfoInstance();
@@ -1899,10 +1937,11 @@ const PLAYER_IDS = [1,2,3,4];
         });
         const raw=await mi.analyzeData(getSize,readChunk);
         const parsed=JSON.parse(raw);
+        // Overwrite fallback with full MediaInfo data
         fileMetadata[index]=extractMetaRows(file.name, parsed);
       }catch(e){
-        console.warn('MediaInfo analysis failed',e);
-        fileMetadata[index]=null;
+        console.warn('MediaInfo failed (using basic fallback):', e.message);
+        // fallback rows already set above — no change needed
       }finally{
         fileMetaAnalyzing[index]=false;
         if(metaPanelVisible) refreshMetaTable();
@@ -2016,7 +2055,7 @@ const PLAYER_IDS = [1,2,3,4];
 
       // Define canonical row order (use first loaded player's rows as template)
       const templateIdx=activeIdx.find(i=>fileMetadata[i]);
-      if(!templateIdx&&templateIdx!==0){
+      if(templateIdx==null){
         body.innerHTML=`<div class="meta-loading"><span class="mt-analyzing">⬡ Analyzing…</span></div>`;
         return;
       }
