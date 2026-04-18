@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HLS Real-time Comparison Viewer DEV QA</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="stylesheet" href="./dev-assets/css/comparer.css" />
+</head>
+<body data-env="dev">
+  <div class="dev-build-badge" aria-label="development build">DEV QA</div>
+  <div class="app">
+      <div class="grid">
+        <div class="video-column">
+          <div class="video-box" id="box1">
+            <div class="filename-label" id="label1"></div>
+            <div class="corner-number">1</div>
+            <div class="sync-cursor" id="syncCursor1">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
+            </div>
+            <video id="video1"></video>
+            <img id="image1" class="media-image" alt="comparison image 1" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
+            </div>
+          </div>
+          <div class="playbar" data-player="0">
+            <span class="playbar-label">P1</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
+          </div>
+        </div>
+  
+        <div class="video-column">
+          <div class="video-box" id="box2">
+            <div class="filename-label" id="label2"></div>
+            <div class="corner-number">2</div>
+            <div class="sync-cursor" id="syncCursor2">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
+            </div>
+            <video id="video2"></video>
+            <img id="image2" class="media-image" alt="comparison image 2" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
+            </div>
+          </div>
+          <div class="playbar" data-player="1">
+            <span class="playbar-label">P2</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
+          </div>
+        </div>
+  
+        <div class="video-column extra-player">
+          <div class="video-box" id="box3">
+            <div class="filename-label" id="label3"></div>
+            <div class="corner-number">3</div>
+            <div class="sync-cursor" id="syncCursor3">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
+            </div>
+            <video id="video3"></video>
+            <img id="image3" class="media-image" alt="comparison image 3" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
+            </div>
+          </div>
+          <div class="playbar" data-player="2">
+            <span class="playbar-label">P3</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
+          </div>
+        </div>
+  
+        <div class="video-column extra-player">
+          <div class="video-box" id="box4">
+            <div class="filename-label" id="label4"></div>
+            <div class="corner-number">4</div>
+            <div class="sync-cursor" id="syncCursor4">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
+            </div>
+            <video id="video4"></video>
+            <img id="image4" class="media-image" alt="comparison image 4" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
+            </div>
+          </div>
+          <div class="playbar" data-player="3">
+            <span class="playbar-label">P4</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="top-controls">
+      <label class="layout-select-wrap" for="compareLayoutSelect">
+        <span class="layout-select-label">Layout</span>
+        <select class="layout-select" id="compareLayoutSelect" aria-label="Select comparison layout">
+          <option value="1x2">1x2</option>
+          <option value="2x2">2x2</option>
+          <option value="1x4">1x4</option>
+          <option value="1x3">1x3</option>
+        </select>
+      </label>
+      <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
+      <button class="perf-mode-btn" id="perfModeBtn" type="button" aria-label="Toggle performance mode (slave-seeker)" title="Perf Mode: only P1 plays; others seek in sync. Reduces CPU/GPU load for heavy videos.">Perf</button>
+      <div class="help">
+        <div class="help-icon">?</div>
+        <div class="help-tooltip">
+          ⎵ Space: Play/Pause<br>
+          R: Time Sync<br>
+          0~9: Jump to 0-90% of timeline<br>
+          - : Jump to latest buffered segment<br>
+          S: Toggle left/right 50% crop<br>
+          M: Toggle monitoring panel<br>
+          F: Fullscreen (window)<br>
+          ← / → : Step frame<br>
+          ⇧ + ← / → : Step 10 frames<br>
+          ⇧ + < / > : Adjust playback speed<br>
+          C: Save current frame as PNG<br>
+          🖱 Wheel: Zoom in/out
+        </div>
+      </div>
+    </div>
+  
+    <footer class="footer-bar">
+      <span>Pixell Video Comparer</span>
+      <a href="./about.html">About</a>
+    </footer>
+  
+    <div class="monitor-panel" id="monitorPanel" aria-hidden="true">
+      <div class="monitor-header">
+        <h2>Real-time Monitoring</h2>
+        <button class="monitor-close" type="button" aria-label="Close monitoring panel">×</button>
+      </div>
+  
+  
+      <div class="monitor-section">
+        <h3>Network Metrics</h3>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-title">Segment Download Speed (Mbps)</div>
+            <div class="metric-desc">Average transfer speed calculated from segment bytes and download duration (from first byte to completion).</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="speedGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="speedValue1">-</div>
+                  <div class="metric-details">60s avg · latest: <span id="speedInstant1">-</span></div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="speedGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="speedValue2">-</div>
+                  <div class="metric-details">60s avg · latest: <span id="speedInstant2">-</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Segment Download Latency (sec)</div>
+            <div class="metric-desc">Round-trip latency from segment request to first byte. Useful for RTT/CDN responsiveness checks.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="latencyGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="latencyValue1">-</div>
+                  <div class="metric-details">Request to first byte</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="latencyGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="latencyValue2">-</div>
+                  <div class="metric-details">Request to first byte</div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">ABR Estimated Bandwidth (Mbps)</div>
+            <div class="metric-desc">Estimated available bandwidth from Hls.js, used for next quality-level selection.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="bandwidthGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bandwidthValue1">-</div>
+                  <div class="metric-details">Hls.js Bandwidth Estimate</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="bandwidthGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bandwidthValue2">-</div>
+                  <div class="metric-details">Hls.js Bandwidth Estimate</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+  
+      <div class="monitor-section">
+        <h3>Buffer &amp; Playback Status</h3>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-title">Remaining Buffer (sec)</div>
+            <div class="metric-desc">Buffered media duration ahead of the current playhead. Low values may cause stalling.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="bufferGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bufferValue1">-</div>
+                  <div class="metric-details">Relative to current playhead</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="bufferGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bufferValue2">-</div>
+                  <div class="metric-details">Relative to current playhead</div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Playback Rate &amp; Stalls</div>
+            <div class="metric-desc">Current playback speed and waiting/stalled count with cumulative duration.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1 Playback Rate</strong>
+                <span id="playbackValue1">-</span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2 Playback Rate</strong>
+                <span id="playbackValue2">-</span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 1 Stalls</strong>
+                <span><span id="stallValue1">0 times</span> · <span id="stallDuration1">0.0 sec</span></span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2 Stalls</strong>
+                <span><span id="stallValue2">0 times</span> · <span id="stallDuration2">0.0 sec</span></span>
+              </div>
+            </div>
+          </div>
+  
+          <div class="metric">
+            <div class="metric-title">Segment Ingest to Render Latency (sec)</div>
+            <div class="metric-desc">Time from segment buffer ingest to on-screen playback, indicating pipeline latency.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="ingestGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="ingestValue1">-</div>
+                  <div class="metric-details">Based on latest 30 segments</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="ingestGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="ingestValue2">-</div>
+                  <div class="metric-details">Based on latest 30 segments</div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <div class="metric">
+            <div class="metric-title">Timeline Difference Between Players (sec)</div>
+            <div class="metric-desc">Player 2 currentTime minus Player 1 currentTime. Useful for sync drift checks.</div>
+            <div class="metric-inline single-value">
+              <div class="metric-chip">
+                <strong>Current difference</strong>
+                <span id="timeDiffValue">-</span>
+                <small id="timeDiffDetail">-</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+  
+      <div class="monitor-section">
+        <h3>Quality &amp; Frames</h3>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-title">Resolution / Bitrate / Codec</div>
+            <div class="metric-desc">Shows current stream resolution, advertised bitrate, and codec from Hls.js.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1</strong>
+                <span id="qualityValue1">-</span>
+                <small id="codecValue1">Codec: -</small>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2</strong>
+                <span id="qualityValue2">-</span>
+                <small id="codecValue2">Codec: -</small>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Dropped Frames / Total Frames</div>
+            <div class="metric-desc">Displays dropped frames and total decoded frames. A high ratio indicates rendering performance issues.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1</strong>
+                <span id="droppedValue1">-</span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2</strong>
+                <span id="droppedValue2">-</span>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Error Count</div>
+            <div class="metric-desc">Cumulative network/media/other errors detected by Hls.js.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1</strong>
+                <span>Network: <span id="errorNetwork1">0</span></span>
+                <span>Media: <span id="errorMedia1">0</span></span>
+                <span>Other: <span id="errorOther1">0</span></span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2</strong>
+                <span>Network: <span id="errorNetwork2">0</span></span>
+                <span>Media: <span id="errorMedia2">0</span></span>
+                <span>Other: <span id="errorOther2">0</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <script src="./dev-assets/js/parse-exr.js"></script>
+  <script src="./dev-assets/js/comparer-app.js"></script>
+</body>
+</html>
