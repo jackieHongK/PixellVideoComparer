@@ -1881,7 +1881,7 @@ const PLAYER_IDS = [1,2,3,4];
       if(typeof factory!=='function') throw new Error('MediaInfo not loaded');
       mediaInfoInstance=await factory({
         format:'JSON',
-        locateFile:(path)=>`./dev-assets/vendor/${path}`
+        locateFile:(path)=>`./assets/vendor/${path}`
       });
       return mediaInfoInstance;
     }
