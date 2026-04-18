@@ -1,3614 +1,419 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HLS Real-time Comparison Viewer</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <style>
-    html, body {
-      margin: 0; padding: 0; height: 100%;
-      background: #000; color: #fff;
-      font-family: 'Inter', Arial, sans-serif;
-      overflow: hidden;
-    }
-
-
-    .app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      flex: 1;
-      width: 100%;
-      min-height: 0;
-    }
-    .video-column.extra-player { display: none; }
-    .video-column {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      position: relative;
-    }
-    .video-box {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-      border: 1px solid #222;
-      background: #000;
-      cursor: zoom-in;
-    }
-    video,
-    .media-image {
-      width: 100%; height: 100%;
-      object-fit: contain;
-      background: #000;
-      transition: transform 0.1s linear, transform-origin 0.1s linear;
-      pointer-events: none;
-    }
-    .media-image {
-      position: absolute;
-      top: 0;
-      left: 0;
-      display: none;
-    }
-
-
-    .playbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.55);
-      border-top: 1px solid rgba(255,255,255,0.06);
-      flex-shrink: 0;
-    }
-    .playbar-label {
-      font-size: 11px;
-      color: #9fc9ff;
-      font-weight: 600;
-      width: 28px;
-      text-align: center;
-      letter-spacing: 0.02em;
-    }
-    .playbar button {
-      width: 26px;
-      height: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.18);
-      color: #e4f4ff;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-    }
-    .playbar button:hover {
-      background: rgba(255,255,255,0.15);
-      border-color: rgba(255,255,255,0.3);
-    }
-    .playbar input[type=range] {
-      flex: 1;
-      appearance: none;
-      height: 3px;
-      background: rgba(255,255,255,0.22);
-      border-radius: 3px;
-      outline: none;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .playbar input[type=range]::-webkit-slider-thumb {
-      appearance: none;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #3da6ff;
-      border: none;
-    }
-    .playbar input[type=range]::-moz-range-thumb {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #3da6ff;
-      border: none;
-    }
-    .playbar-time {
-      font-size: 11px;
-      color: #cbe6ff;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      min-width: 88px;
-      justify-content: flex-end;
-      font-variant-numeric: tabular-nums;
-    }
-
-
-    .filename-label {
-      position: absolute; top: 8px; left: 10px;
-      background: rgba(0,0,0,0.5);
-      padding: 4px 8px; border-radius: 6px;
-      font-size: 12px; color: #bbb;
-      z-index: 5; user-select: none; pointer-events: none;
-    }
-    .corner-number {
-      position: absolute; bottom: 8px; left: 10px;
-      font-size: 36px; font-weight: bold;
-      color: rgba(255,255,255,0.6);
-      text-shadow: 0 0 5px rgba(0,0,0,0.8);
-      z-index: 5; user-select: none;
-    }
-    .sync-cursor {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      display: none;
-      z-index: 12;
-      --cursor-x: 50%;
-      --cursor-y: 50%;
-    }
-    .sync-cursor.visible { display: block; }
-    .sync-cursor-v,
-    .sync-cursor-h {
-      position: absolute;
-      background: rgba(255, 56, 56, 0.55);
-      box-shadow: 0 0 6px rgba(255, 56, 56, 0.5);
-    }
-    .sync-cursor-v {
-      top: 0;
-      bottom: 0;
-      left: var(--cursor-x);
-      width: 1px;
-      transform: translateX(-0.5px);
-    }
-    .sync-cursor-h {
-      left: 0;
-      right: 0;
-      top: var(--cursor-y);
-      height: 1px;
-      transform: translateY(-0.5px);
-    }
-    .sync-cursor-dot {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #ff2b2b;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.85), 0 0 10px rgba(255,43,43,0.9);
-      left: var(--cursor-x);
-      top: var(--cursor-y);
-      transform: translate(-50%, -50%);
-    }
-
-
-    .input-modal {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(20,20,20,0.9);
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px; width: 220px;
-      display: none; flex-direction: column;
-      gap: 8px; z-index: 6;
-    }
-    .video-box:hover:not(.loaded) .input-modal { display: flex; }
-    .drop-zone {
-      border: 2px dashed #555; border-radius: 6px;
-      padding: 12px; text-align: center; font-size: 13px;
-      color: #aaa; cursor: pointer; background: rgba(255,255,255,0.05);
-      transition: border-color 0.2s;
-    }
-    .drop-zone:hover { border-color: #0af; color: #0af; }
-    input.url-input {
-      width: 100%; padding: 6px;
-      border-radius: 4px; border: 1px solid #555;
-      background: #111; color: #eee; font-size: 13px;
-    }
-    .multi-add-btn {
-      margin-top: 2px;
-      padding: 6px;
-      font-size: 12px;
-      border-radius: 5px;
-      border: 1px dashed rgba(0,170,255,0.35);
-      background: rgba(0,50,90,0.35);
-      color: #9ad7ff;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-    }
-    .multi-add-btn:hover {
-      background: rgba(0,80,140,0.45);
-      border-color: rgba(0,170,255,0.6);
-      color: #c7ecff;
-    }
-
-    .bulk-modal {
-      position: absolute;
-      inset: 0;
-      background: rgba(10,10,18,0.88);
-      border: 1px solid rgba(0,170,255,0.35);
-      border-radius: 12px;
-      padding: 20px;
-      display: none;
-      flex-direction: column;
-      gap: 16px;
-      z-index: 40;
-      backdrop-filter: blur(6px);
-    }
-    .bulk-modal.visible { display: flex; }
-    .bulk-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .bulk-header h3 {
-      margin: 0;
-      font-size: 15px;
-      color: #9bd6ff;
-    }
-    .bulk-close {
-      border: none;
-      background: rgba(255,255,255,0.08);
-      color: #d4ecff;
-      border-radius: 6px;
-      width: 26px;
-      height: 26px;
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-    }
-    .bulk-drop {
-      border: 2px dashed rgba(0,140,255,0.35);
-      border-radius: 8px;
-      padding: 16px;
-      text-align: center;
-      font-size: 13px;
-      color: #a3d6ff;
-      background: rgba(0,40,80,0.35);
-      cursor: pointer;
-      transition: border-color 0.2s, color 0.2s, background 0.2s;
-    }
-    .bulk-drop.dragover {
-      border-color: rgba(0,200,255,0.7);
-      color: #e4f7ff;
-      background: rgba(0,60,120,0.45);
-    }
-    .bulk-rows {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      max-height: 40vh;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-    .bulk-row {
-      display: grid;
-      grid-template-columns: 88px 1fr 32px;
-      gap: 8px;
-      align-items: center;
-      background: rgba(0,20,40,0.55);
-      border: 1px solid rgba(0,110,200,0.45);
-      border-radius: 8px;
-      padding: 8px;
-      position: relative;
-    }
-    .bulk-row.highlight {
-      box-shadow: 0 0 0 2px rgba(0,200,255,0.6);
-    }
-    .bulk-type {
-      width: 100%;
-      padding: 6px;
-      border-radius: 6px;
-      border: 1px solid rgba(0,120,200,0.4);
-      background: rgba(0,30,60,0.6);
-      color: #c9e9ff;
-    }
-    .bulk-file-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.08);
-      color: #e8f4ff;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .bulk-url-input {
-      width: 100%;
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid rgba(0,110,190,0.45);
-      background: rgba(0,20,40,0.6);
-      color: #def3ff;
-      font-size: 12px;
-    }
-    .bulk-file-name {
-      font-size: 11px;
-      color: #a7d4ff;
-      word-break: break-all;
-    }
-    .bulk-remove {
-      border: none;
-      background: rgba(255,80,80,0.2);
-      color: #ffbcbc;
-      border-radius: 6px;
-      width: 28px;
-      height: 28px;
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-    }
-    .bulk-footer {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .bulk-add-row,
-    .bulk-apply {
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: 1px solid rgba(0,140,255,0.45);
-      background: rgba(0,60,130,0.55);
-      color: #c9e9ff;
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-    }
-    .bulk-add-row:hover,
-    .bulk-apply:hover {
-      background: rgba(0,90,160,0.65);
-      border-color: rgba(0,190,255,0.6);
-    }
-
-    .top-controls {
-      position: fixed;
-      top: 12px;
-      right: 14px;
-      z-index: 10;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-    .playlist-button {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      border: 1px solid rgba(0,150,255,0.4);
-      background: rgba(0,40,80,0.6);
-      color: #b4e1ff;
-      font-size: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-    }
-    .playlist-button:hover,
-    .playlist-button.active {
-      background: rgba(0,70,140,0.75);
-      border-color: rgba(0,200,255,0.65);
-      color: #e6f7ff;
-    }
-    .playlist-button.has-items:not(.active) {
-      border-color: rgba(0,180,255,0.5);
-      color: #d0efff;
-    }
-    .capture-button {
-      height: 28px;
-      border-radius: 8px;
-      border: 1px solid rgba(0,150,255,0.4);
-      background: rgba(0,40,80,0.6);
-      color: #b4e1ff;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 10px;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-    }
-    .capture-button:hover {
-      background: rgba(0,70,140,0.75);
-      border-color: rgba(0,200,255,0.65);
-      color: #e6f7ff;
-    }
-    .layout-select-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      height: 28px;
-      border-radius: 8px;
-      border: 1px solid rgba(0,150,255,0.4);
-      background: rgba(0,40,80,0.6);
-      color: #b4e1ff;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 0 8px;
-    }
-    .layout-select-label {
-      color: #9dd8ff;
-      letter-spacing: 0.02em;
-      white-space: nowrap;
-    }
-    .layout-select {
-      height: 22px;
-      border-radius: 6px;
-      border: 1px solid rgba(0,170,255,0.45);
-      background: rgba(0,25,50,0.8);
-      color: #e6f7ff;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 0 20px 0 8px;
-      cursor: pointer;
-    }
-    .layout-select:focus {
-      outline: none;
-      border-color: rgba(0,210,255,0.75);
-    }
-    .playlist-overlay {
-      position: fixed;
-      top: 64px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(92vw, 1100px);
-      max-height: 80vh;
-      overflow: hidden;
-      background: rgba(12,18,28,0.94);
-      border: 1px solid rgba(0,170,255,0.5);
-      border-radius: 14px;
-      color: #e9f6ff;
-      box-shadow: 0 18px 48px rgba(0,0,0,0.55);
-      display: none;
-      flex-direction: column;
-      z-index: 30;
-      backdrop-filter: blur(8px);
-    }
-    .playlist-overlay.visible { display: flex; }
-    .playlist-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      gap: 10px;
-    }
-    .playlist-header h3 {
-      margin: 0;
-      font-size: 18px;
-      color: #93d5ff;
-    }
-    .playlist-controls {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .playlist-close,
-    .playlist-edit-btn {
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid rgba(0,150,255,0.4);
-      background: rgba(0,40,80,0.55);
-      color: #d7f0ff;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .playlist-close:hover,
-    .playlist-edit-btn:hover {
-      background: rgba(0,70,140,0.65);
-      border-color: rgba(0,200,255,0.6);
-    }
-    .playlist-body {
-      padding: 14px 20px 20px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .playlist-row {
-      display: grid;
-      grid-template-columns: 52px repeat(var(--playlist-player-count, 2), minmax(0, 1fr)) 48px;
-      gap: 10px;
-      align-items: center;
-      padding: 10px 12px;
-      background: rgba(0,20,40,0.55);
-      border: 1px solid rgba(0,110,200,0.45);
-      border-radius: 10px;
-      cursor: grab;
-    }
-    .playlist-row:active { cursor: grabbing; }
-    .playlist-row.active {
-      border-color: rgba(0,200,255,0.8);
-      box-shadow: 0 0 0 2px rgba(0,200,255,0.35);
-    }
-    .playlist-row.dragover {
-      border-color: rgba(0,200,255,0.6);
-      box-shadow: 0 0 0 2px rgba(0,200,255,0.25);
-    }
-    .playlist-index-tag {
-      font-size: 14px;
-      font-weight: 600;
-      color: #8fd4ff;
-      text-align: center;
-    }
-    .playlist-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 8px;
-      border-radius: 8px;
-      background: rgba(0,30,60,0.55);
-      border: 1px solid rgba(0,140,255,0.35);
-      min-height: 58px;
-    }
-    .playlist-cell.empty {
-      opacity: 0.6;
-      border-style: dashed;
-      border-color: rgba(255,255,255,0.18);
-      background: rgba(0,0,0,0.2);
-    }
-    .playlist-label {
-      font-size: 11px;
-      color: #82c8ff;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .playlist-name {
-      font-size: 13px;
-      color: #f2fbff;
-      word-break: break-all;
-    }
-    .playlist-type {
-      font-size: 11px;
-      color: #a6dfff;
-    }
-    .playlist-cell button {
-      align-self: flex-start;
-      padding: 4px 10px;
-      font-size: 11px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.08);
-      color: #e6f7ff;
-      cursor: pointer;
-    }
-    .playlist-delete {
-      border: none;
-      background: rgba(255,80,80,0.22);
-      color: #ffc5c5;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .playlist-empty {
-      text-align: center;
-      padding: 40px 20px;
-      font-size: 13px;
-      color: #9ecbf5;
-      border: 1px dashed rgba(255,255,255,0.12);
-      border-radius: 12px;
-    }
-    .video-box.loaded { cursor: zoom-in; }
-
-
-    .help {
-      position: relative;
-      z-index: 10;
-      display: flex;
-      align-items: flex-start;
-    }
-    .help-icon {
-      width: 24px; height: 24px;
-      border-radius: 50%;
-      border: 1px solid #666;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.6);
-      color: #bbb;
-      font-weight: 600;
-      font-size: 14px;
-      user-select: none;
-      pointer-events: none;
-      transition: color 0.2s, border-color 0.2s, background 0.2s;
-    }
-    .help:hover .help-icon {
-      color: #0af;
-      border-color: #0af;
-      background: rgba(0,0,0,0.8);
-    }
-    .help-tooltip {
-      display: none;
-      position: absolute;
-      top: 32px; right: 0;
-      background: rgba(0,0,0,0.92);
-      border: 1px solid #0af;
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-size: 12px;
-      line-height: 1.5;
-      color: #ccc;
-      width: 210px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-      pointer-events: none;
-    }
-    .help:hover .help-tooltip { display: block; }
-
-
-    .monitor-panel {
-      position: fixed;
-      top: 64px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(92vw, 1100px);
-      max-height: 80vh;
-      overflow-y: auto;
-      background: rgba(10, 10, 18, 0.88);
-      border: 1px solid rgba(0, 170, 255, 0.5);
-      border-radius: 14px;
-      padding: 18px 22px 24px;
-      color: #e5f1ff;
-      box-shadow: 0 18px 48px rgba(0,0,0,0.5);
-      backdrop-filter: blur(8px);
-      display: none;
-      z-index: 20;
-    }
-    .monitor-panel.visible { display: block; }
-    .monitor-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .monitor-header h2 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 600;
-      color: #8ed0ff;
-    }
-    .monitor-close {
-      flex-shrink: 0;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.25);
-      background: rgba(0,0,0,0.35);
-      color: #cfe9ff;
-      font-size: 18px;
-      line-height: 1;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-    }
-    .monitor-close:hover {
-      background: rgba(0,60,120,0.5);
-      border-color: rgba(150,220,255,0.7);
-      color: #ffffff;
-    }
-    .monitor-section {
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    .monitor-section:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-    .monitor-section h3 {
-      margin: 0 0 12px;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      color: #c1e7ff;
-    }
-    .metric-group {
-      display: grid;
-      gap: 14px;
-    }
-    .metric {
-      background: rgba(0, 10, 25, 0.45);
-      border: 1px solid rgba(0, 102, 170, 0.35);
-      border-radius: 10px;
-      padding: 12px 14px;
-    }
-    .metric-title {
-      font-size: 13px;
-      color: #9ecdf5;
-      margin-bottom: 6px;
-    }
-    .metric-desc {
-      font-size: 11px;
-      color: #7fb4dd;
-      margin-bottom: 10px;
-      line-height: 1.45;
-    }
-    .metric-pair {
-      display: grid;
-      gap: 10px;
-    }
-    .metric-card {
-      display: grid;
-      grid-template-columns: 32px 1fr;
-      gap: 10px;
-      align-items: center;
-    }
-    .metric-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #6fbaf5;
-      text-align: center;
-      padding: 6px 0;
-      border-radius: 8px;
-      background: rgba(0, 122, 255, 0.18);
-    }
-    .metric-value {
-      font-size: 14px;
-      font-weight: 600;
-      color: #f3fbff;
-      margin-top: 6px;
-    }
-    .metric-details {
-      font-size: 12px;
-      color: #a3c3df;
-      margin-top: 2px;
-    }
-    .metric-card canvas {
-      width: 100%;
-      height: 58px;
-      background: rgba(0,0,0,0.35);
-      border-radius: 8px;
-    }
-    .metric-inline {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      font-size: 13px;
-      color: #d7e9ff;
-    }
-    .metric-inline.single-value {
-      grid-template-columns: 1fr;
-    }
-    .metric-inline .metric-chip {
-      background: rgba(0, 40, 90, 0.55);
-      border: 1px solid rgba(0, 160, 255, 0.2);
-      border-radius: 10px;
-      padding: 10px 12px;
-      display: grid;
-      gap: 4px;
-    }
-    .metric-chip strong { color: #8fd3ff; font-size: 12px; }
-    .metric-chip span { font-size: 13px; color: #f3fbff; }
-    .metric-chip small { font-size: 11px; color: #9ecdf5; }
-
-    :root {
-      --rui-dark: #191c1f;
-      --rui-light: #ffffff;
-      --rui-surface: #f4f4f4;
-      --rui-blue: #494fdf;
-      --rui-border: #c9c9cd;
-      --rui-muted: #8d969e;
-    }
-
-    html, body {
-      background: var(--rui-dark);
-      color: var(--rui-light);
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
-    }
-
-    body {
-      overflow: hidden;
-    }
-
-    .app {
-      height: calc(100vh - 22px);
-      width: 100vw;
-      padding: 0;
-      gap: 0;
-    }
-
-    .grid {
-      gap: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    .video-column {
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      background: #000;
-      overflow: hidden;
-    }
-
-    .video-box {
-      border: none;
-      border-radius: 0;
-      background: #000;
-    }
-
-    .filename-label {
-      top: 8px;
-      left: 8px;
-      background: rgba(25, 28, 31, 0.86);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      color: #f4f4f4;
-      border-radius: 9999px;
-      font-size: 11px;
-      backdrop-filter: blur(5px);
-    }
-
-    .corner-number {
-      font-size: 28px;
-      color: rgba(255,255,255,0.38);
-      text-shadow: none;
-    }
-
-    .playbar {
-      padding: 6px 8px;
-      gap: 8px;
-      background: rgba(25, 28, 31, 0.94);
-      border-top: 1px solid rgba(201, 201, 205, 0.28);
-    }
-
-    .playbar-label {
-      width: 30px;
-      height: 22px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 9999px;
-      background: rgba(244, 244, 244, 0.12);
-      color: #f4f4f4;
-      font-size: 10px;
-      letter-spacing: 0.16px;
-    }
-
-    .playbar button,
-    .capture-button {
-      border-radius: 9999px;
-      border: 2px solid #f4f4f4;
-      background: rgba(244, 244, 244, 0.1);
-      color: #f4f4f4;
-      transition: opacity 0.2s;
-    }
-    .playbar button {
-      width: 28px;
-      height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      line-height: 1;
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .playbar .play-toggle {
-      font-size: 11px;
-      padding-left: 1px;
-    }
-    .playbar .fullscreen-toggle {
-      font-size: 14px;
-    }
-
-    .playbar button:hover,
-    .capture-button:hover {
-      opacity: 0.85;
-    }
-
-    .playbar input[type=range] {
-      height: 4px;
-      background: rgba(244, 244, 244, 0.2);
-    }
-
-    .playbar input[type=range]::-webkit-slider-thumb {
-      width: 12px;
-      height: 12px;
-      background: #ffffff;
-    }
-    .playbar input[type=range]::-moz-range-thumb {
-      width: 12px;
-      height: 12px;
-      background: #ffffff;
-    }
-
-    .playbar-time {
-      color: #f4f4f4;
-      font-size: 10px;
-      min-width: 92px;
-      letter-spacing: 0.16px;
-    }
-
-    .top-controls {
-      top: 10px;
-      right: 12px;
-      gap: 8px;
-      padding: 5px 6px;
-      border-radius: 9999px;
-      border: 1px solid rgba(244, 244, 244, 0.24);
-      background: rgba(25, 28, 31, 0.72);
-      backdrop-filter: blur(8px);
-      align-items: center;
-      box-shadow: none;
-    }
-
-    .layout-select-wrap {
-      height: auto;
-      border: 0;
-      background: transparent;
-      padding: 0;
-      color: #f4f4f4;
-      gap: 6px;
-    }
-
-    .layout-select-label {
-      display: none;
-    }
-
-    .layout-select {
-      height: 30px;
-      border-radius: 9999px;
-      border: 1px solid rgba(244, 244, 244, 0.32);
-      background: rgba(25, 28, 31, 0.95);
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.16px;
-      padding: 0 30px 0 12px;
-      min-width: 78px;
-    }
-
-    .capture-button {
-      min-width: 86px;
-      height: 30px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.16px;
-      padding: 0 16px;
-    }
-
-    .help-icon {
-      width: 30px;
-      height: 30px;
-      border-radius: 9999px;
-      border: 2px solid #f4f4f4;
-      background: rgba(244, 244, 244, 0.1);
-      color: #f4f4f4;
-      pointer-events: auto;
-      cursor: help;
-    }
-
-    .help:hover .help-icon {
-      opacity: 0.85;
-      background: rgba(244, 244, 244, 0.16);
-      border-color: #ffffff;
-    }
-
-    .help-tooltip {
-      top: 36px;
-      right: 0;
-      width: 250px;
-      border-radius: 12px;
-      border: 1px solid rgba(244, 244, 244, 0.28);
-      background: rgba(25, 28, 31, 0.96);
-      color: #f4f4f4;
-      font-size: 11px;
-      line-height: 1.6;
-      padding: 12px;
-      box-shadow: none;
-    }
-
-    .monitor-panel {
-      top: 56px;
-      border: 1px solid rgba(244, 244, 244, 0.24);
-      border-radius: 20px;
-      background: rgba(25, 28, 31, 0.98);
-      color: #f4f4f4;
-      box-shadow: none;
-    }
-
-    .monitor-header h2 {
-      color: #ffffff;
-      font-size: 24px;
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
-      font-weight: 600;
-      letter-spacing: -0.24px;
-    }
-
-    .monitor-close {
-      width: 30px;
-      height: 30px;
-      border-radius: 9999px;
-      border: 2px solid #f4f4f4;
-      background: rgba(244, 244, 244, 0.1);
-      color: #ffffff;
-    }
-
-    .monitor-close:hover {
-      opacity: 0.85;
-      background: rgba(244, 244, 244, 0.16);
-      border-color: #ffffff;
-    }
-
-    .monitor-section {
-      border-bottom: 1px solid rgba(244, 244, 244, 0.18);
-    }
-
-    .monitor-section h3 {
-      color: #ffffff;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .metric {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(244, 244, 244, 0.16);
-      border-radius: 12px;
-    }
-
-    .metric-title,
-    .metric-value {
-      color: #ffffff;
-    }
-
-    .metric-desc,
-    .metric-details,
-    .metric-chip span,
-    .metric-chip small {
-      color: #c9c9cd;
-    }
-
-    .metric-label {
-      background: rgba(244, 244, 244, 0.12);
-      border: 1px solid rgba(244, 244, 244, 0.22);
-      color: #ffffff;
-    }
-
-    .metric-card canvas {
-      background: rgba(0,0,0,0.45);
-      border: 1px solid rgba(244, 244, 244, 0.16);
-      border-radius: 8px;
-    }
-
-    .metric-inline .metric-chip {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(244, 244, 244, 0.16);
-    }
-
-    .metric-chip strong {
-      color: #ffffff;
-    }
-
-    .playlist-overlay,
-    .playlist-button,
-    .multi-add-btn,
-    .bulk-modal {
-      display: none !important;
-    }
-
-    .footer-bar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: #191c1f;
-      border-top: 1px solid rgba(201, 201, 205, 0.42);
-      color: #c9c9cd;
-      font-size: 10px;
-      letter-spacing: 0.16px;
-      z-index: 60;
-    }
-
-    .footer-bar a {
-      color: #ffffff;
-      text-decoration: none;
-      border-bottom: 1px solid rgba(255,255,255,0.6);
-      line-height: 1;
-    }
-
-    .footer-bar a:hover {
-      opacity: 0.82;
-    }
-
-    @media (max-width: 980px) {
-      .top-controls {
-        position: fixed;
-        top: 8px;
-        right: 8px;
-      }
-
-      .monitor-panel {
-        top: 50px;
-        width: calc(100vw - 12px);
-        max-height: calc(100vh - 64px);
-      }
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
+  <script src="./assets/vendor/mediainfo.umd.min.js"></script>
+  <link rel="stylesheet" href="./assets/css/comparer.css" />
 </head>
 <body>
-
-
   <div class="app">
-    <div class="grid">
-      <div class="video-column">
-        <div class="video-box" id="box1">
-          <div class="filename-label" id="label1"></div>
-          <div class="corner-number">1</div>
-          <div class="sync-cursor" id="syncCursor1">
-            <div class="sync-cursor-v"></div>
-            <div class="sync-cursor-h"></div>
-            <div class="sync-cursor-dot"></div>
-          </div>
-          <video id="video1"></video>
-          <img id="image1" class="media-image" alt="comparison image 1" />
-          <div class="input-modal">
-            <div class="drop-zone">🎬 Drag a file here or click</div>
-            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
-            <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-          </div>
-        </div>
-        <div class="playbar" data-player="0">
-          <span class="playbar-label">P1</span>
-          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
-          <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
-          <div class="playbar-time">
-            <span class="time-current">00:00</span>
-            <span class="time-sep">/</span>
-            <span class="time-total">00:00</span>
-          </div>
-          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
-        </div>
-      </div>
-
-      <div class="video-column">
-        <div class="video-box" id="box2">
-          <div class="filename-label" id="label2"></div>
-          <div class="corner-number">2</div>
-          <div class="sync-cursor" id="syncCursor2">
-            <div class="sync-cursor-v"></div>
-            <div class="sync-cursor-h"></div>
-            <div class="sync-cursor-dot"></div>
-          </div>
-          <video id="video2"></video>
-          <img id="image2" class="media-image" alt="comparison image 2" />
-          <div class="input-modal">
-            <div class="drop-zone">🎬 Drag a file here or click</div>
-            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
-            <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-          </div>
-        </div>
-        <div class="playbar" data-player="1">
-          <span class="playbar-label">P2</span>
-          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
-          <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
-          <div class="playbar-time">
-            <span class="time-current">00:00</span>
-            <span class="time-sep">/</span>
-            <span class="time-total">00:00</span>
-          </div>
-          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
-        </div>
-      </div>
-
-      <div class="video-column extra-player">
-        <div class="video-box" id="box3">
-          <div class="filename-label" id="label3"></div>
-          <div class="corner-number">3</div>
-          <div class="sync-cursor" id="syncCursor3">
-            <div class="sync-cursor-v"></div>
-            <div class="sync-cursor-h"></div>
-            <div class="sync-cursor-dot"></div>
-          </div>
-          <video id="video3"></video>
-          <img id="image3" class="media-image" alt="comparison image 3" />
-          <div class="input-modal">
-            <div class="drop-zone">🎬 Drag a file here or click</div>
-            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
-            <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-          </div>
-        </div>
-        <div class="playbar" data-player="2">
-          <span class="playbar-label">P3</span>
-          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
-          <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
-          <div class="playbar-time">
-            <span class="time-current">00:00</span>
-            <span class="time-sep">/</span>
-            <span class="time-total">00:00</span>
-          </div>
-          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
-        </div>
-      </div>
-
-      <div class="video-column extra-player">
-        <div class="video-box" id="box4">
-          <div class="filename-label" id="label4"></div>
-          <div class="corner-number">4</div>
-          <div class="sync-cursor" id="syncCursor4">
-            <div class="sync-cursor-v"></div>
-            <div class="sync-cursor-h"></div>
-            <div class="sync-cursor-dot"></div>
-          </div>
-          <video id="video4"></video>
-          <img id="image4" class="media-image" alt="comparison image 4" />
-          <div class="input-modal">
-            <div class="drop-zone">🎬 Drag a file here or click</div>
-            <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
-            <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
-          </div>
-        </div>
-        <div class="playbar" data-player="3">
-          <span class="playbar-label">P4</span>
-          <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
-          <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
-          <div class="playbar-time">
-            <span class="time-current">00:00</span>
-            <span class="time-sep">/</span>
-            <span class="time-total">00:00</span>
-          </div>
-          <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="top-controls">
-    <label class="layout-select-wrap" for="compareLayoutSelect">
-      <span class="layout-select-label">Layout</span>
-      <select class="layout-select" id="compareLayoutSelect" aria-label="Select comparison layout">
-        <option value="1x2">1x2</option>
-        <option value="2x2">2x2</option>
-        <option value="1x4">1x4</option>
-        <option value="1x3">1x3</option>
-      </select>
-    </label>
-    <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
-    <div class="help">
-      <div class="help-icon">?</div>
-      <div class="help-tooltip">
-        ⎵ Space: Play/Pause<br>
-        R: Time Sync<br>
-        0~9: Jump to 0-90% of timeline<br>
-        - : Jump to latest buffered segment<br>
-        S: Toggle left/right 50% crop<br>
-        M: Toggle monitoring panel<br>
-        F: Fullscreen (window)<br>
-        ← / → : Step frame<br>
-        ⇧ + ← / → : Step 10 frames<br>
-        ⇧ + < / > : Adjust playback speed<br>
-        C: Save current frame as PNG<br>
-        🖱 Wheel: Zoom in/out
-      </div>
-    </div>
-  </div>
-
-  <footer class="footer-bar">
-    <span>Pixell Video Comparer</span>
-    <a href="./about.html">About</a>
-  </footer>
-
-  <div class="monitor-panel" id="monitorPanel" aria-hidden="true">
-    <div class="monitor-header">
-      <h2>Real-time Monitoring</h2>
-      <button class="monitor-close" type="button" aria-label="Close monitoring panel">×</button>
-    </div>
-
-
-    <div class="monitor-section">
-      <h3>Network Metrics</h3>
-      <div class="metric-group">
-        <div class="metric">
-          <div class="metric-title">Segment Download Speed (Mbps)</div>
-          <div class="metric-desc">Average transfer speed calculated from segment bytes and download duration (from first byte to completion).</div>
-          <div class="metric-pair">
-            <div class="metric-card">
-              <div class="metric-label">1</div>
-              <div>
-                <canvas id="speedGraph1" width="200" height="60"></canvas>
-                <div class="metric-value" id="speedValue1">-</div>
-                <div class="metric-details">60s avg · latest: <span id="speedInstant1">-</span></div>
-              </div>
+      <div class="grid">
+        <div class="video-column">
+          <div class="video-box" id="box1">
+            <div class="filename-label" id="label1"></div>
+            <div class="corner-number">1</div>
+            <div class="sync-cursor" id="syncCursor1">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
             </div>
-            <div class="metric-card">
-              <div class="metric-label">2</div>
-              <div>
-                <canvas id="speedGraph2" width="200" height="60"></canvas>
-                <div class="metric-value" id="speedValue2">-</div>
-                <div class="metric-details">60s avg · latest: <span id="speedInstant2">-</span></div>
-              </div>
+            <video id="video1"></video>
+            <img id="image1" class="media-image" alt="comparison image 1" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
             </div>
           </div>
-        </div>
-
-
-        <div class="metric">
-          <div class="metric-title">Segment Download Latency (sec)</div>
-          <div class="metric-desc">Round-trip latency from segment request to first byte. Useful for RTT/CDN responsiveness checks.</div>
-          <div class="metric-pair">
-            <div class="metric-card">
-              <div class="metric-label">1</div>
-              <div>
-                <canvas id="latencyGraph1" width="200" height="60"></canvas>
-                <div class="metric-value" id="latencyValue1">-</div>
-                <div class="metric-details">Request to first byte</div>
-              </div>
+          <div class="playbar" data-player="0">
+            <span class="playbar-label">P1</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
             </div>
-            <div class="metric-card">
-              <div class="metric-label">2</div>
-              <div>
-                <canvas id="latencyGraph2" width="200" height="60"></canvas>
-                <div class="metric-value" id="latencyValue2">-</div>
-                <div class="metric-details">Request to first byte</div>
-              </div>
-            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
         </div>
-
-
-        <div class="metric">
-          <div class="metric-title">ABR Estimated Bandwidth (Mbps)</div>
-          <div class="metric-desc">Estimated available bandwidth from Hls.js, used for next quality-level selection.</div>
-          <div class="metric-pair">
-            <div class="metric-card">
-              <div class="metric-label">1</div>
-              <div>
-                <canvas id="bandwidthGraph1" width="200" height="60"></canvas>
-                <div class="metric-value" id="bandwidthValue1">-</div>
-                <div class="metric-details">Hls.js Bandwidth Estimate</div>
-              </div>
+  
+        <div class="video-column">
+          <div class="video-box" id="box2">
+            <div class="filename-label" id="label2"></div>
+            <div class="corner-number">2</div>
+            <div class="sync-cursor" id="syncCursor2">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
             </div>
-            <div class="metric-card">
-              <div class="metric-label">2</div>
-              <div>
-                <canvas id="bandwidthGraph2" width="200" height="60"></canvas>
-                <div class="metric-value" id="bandwidthValue2">-</div>
-                <div class="metric-details">Hls.js Bandwidth Estimate</div>
-              </div>
+            <video id="video2"></video>
+            <img id="image2" class="media-image" alt="comparison image 2" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
             </div>
+          </div>
+          <div class="playbar" data-player="1">
+            <span class="playbar-label">P2</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
+          </div>
+        </div>
+  
+        <div class="video-column extra-player">
+          <div class="video-box" id="box3">
+            <div class="filename-label" id="label3"></div>
+            <div class="corner-number">3</div>
+            <div class="sync-cursor" id="syncCursor3">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
+            </div>
+            <video id="video3"></video>
+            <img id="image3" class="media-image" alt="comparison image 3" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
+            </div>
+          </div>
+          <div class="playbar" data-player="2">
+            <span class="playbar-label">P3</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
+          </div>
+        </div>
+  
+        <div class="video-column extra-player">
+          <div class="video-box" id="box4">
+            <div class="filename-label" id="label4"></div>
+            <div class="corner-number">4</div>
+            <div class="sync-cursor" id="syncCursor4">
+              <div class="sync-cursor-v"></div>
+              <div class="sync-cursor-h"></div>
+              <div class="sync-cursor-dot"></div>
+            </div>
+            <video id="video4"></video>
+            <img id="image4" class="media-image" alt="comparison image 4" />
+            <div class="input-modal">
+              <div class="drop-zone">🎬 Drag a file here or click</div>
+              <input class="url-input" type="text" placeholder="Enter URL (.m3u8) and press Enter" />
+              <input type="file" accept="video/*,image/*,.mov,.exr" style="display:none" />
+            </div>
+          </div>
+          <div class="playbar" data-player="3">
+            <span class="playbar-label">P4</span>
+            <button class="play-toggle" type="button" aria-label="Play/Pause">▶</button>
+            <input class="timeline" type="range" min="0" max="100" value="0" step="0.1" />
+            <div class="playbar-time">
+              <span class="time-current">00:00</span>
+              <span class="time-sep">/</span>
+              <span class="time-total">00:00</span>
+            </div>
+            <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
         </div>
       </div>
     </div>
+  
+    <div class="top-controls">
+      <label class="layout-select-wrap" for="compareLayoutSelect">
+        <span class="layout-select-label">Layout</span>
+        <select class="layout-select" id="compareLayoutSelect" aria-label="Select comparison layout">
+          <option value="1x2">1x2</option>
+          <option value="2x2">2x2</option>
+          <option value="1x4">1x4</option>
+          <option value="1x3">1x3</option>
+        </select>
+      </label>
+      <button class="capture-button stats-toggle-btn" id="statsToggleBtn" type="button" aria-label="Toggle stats overlay">Stats</button>
+      <button class="capture-button stats-toggle-btn" id="metaToggleBtn" type="button" aria-label="Toggle metadata panel">Info</button>
+      <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
+      <div class="help">
+        <div class="help-icon">?</div>
+        <div class="help-tooltip">
+          ⎵ Space: Play/Pause<br>
+          R: Time Sync<br>
+          0~9: Jump to 0-90% of timeline<br>
+          - : Jump to latest buffered segment<br>
+          S: Toggle left/right 50% crop<br>
+          M: Toggle monitoring panel<br>
+          F: Fullscreen (window)<br>
+          ← / → : Step frame<br>
+          ⇧ + ← / → : Step 10 frames<br>
+          ⇧ + < / > : Adjust playback speed<br>
+          C: Save current frame as PNG<br>
+          🖱 Wheel: Zoom in/out
+        </div>
+      </div>
+    </div>
+  
+    <!-- Metadata comparison panel -->
+    <div class="meta-panel" id="metaPanel" aria-hidden="true">
+      <div class="meta-panel-header">
+        <span class="meta-panel-title">File Metadata Comparison</span>
+        <span class="meta-panel-hint" id="metaPanelHint"></span>
+        <button class="meta-panel-close" id="metaPanelClose" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="meta-panel-body" id="metaPanelBody">
+        <div class="meta-empty">Load video files to compare metadata.</div>
+      </div>
+    </div>
 
-
-    <div class="monitor-section">
-      <h3>Buffer &amp; Playback Status</h3>
-      <div class="metric-group">
-        <div class="metric">
-          <div class="metric-title">Remaining Buffer (sec)</div>
-          <div class="metric-desc">Buffered media duration ahead of the current playhead. Low values may cause stalling.</div>
-          <div class="metric-pair">
-            <div class="metric-card">
-              <div class="metric-label">1</div>
-              <div>
-                <canvas id="bufferGraph1" width="200" height="60"></canvas>
-                <div class="metric-value" id="bufferValue1">-</div>
-                <div class="metric-details">Relative to current playhead</div>
+    <footer class="footer-bar">
+      <span>Pixell Video Comparer</span>
+      <a href="./about.html">About</a>
+    </footer>
+  
+    <div class="monitor-panel" id="monitorPanel" aria-hidden="true">
+      <div class="monitor-header">
+        <h2>Real-time Monitoring</h2>
+        <button class="monitor-close" type="button" aria-label="Close monitoring panel">×</button>
+      </div>
+  
+  
+      <div class="monitor-section">
+        <h3>Network Metrics</h3>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-title">Segment Download Speed (Mbps)</div>
+            <div class="metric-desc">Average transfer speed calculated from segment bytes and download duration (from first byte to completion).</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="speedGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="speedValue1">-</div>
+                  <div class="metric-details">60s avg · latest: <span id="speedInstant1">-</span></div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="speedGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="speedValue2">-</div>
+                  <div class="metric-details">60s avg · latest: <span id="speedInstant2">-</span></div>
+                </div>
               </div>
             </div>
-            <div class="metric-card">
-              <div class="metric-label">2</div>
-              <div>
-                <canvas id="bufferGraph2" width="200" height="60"></canvas>
-                <div class="metric-value" id="bufferValue2">-</div>
-                <div class="metric-details">Relative to current playhead</div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Segment Download Latency (sec)</div>
+            <div class="metric-desc">Round-trip latency from segment request to first byte. Useful for RTT/CDN responsiveness checks.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="latencyGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="latencyValue1">-</div>
+                  <div class="metric-details">Request to first byte</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="latencyGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="latencyValue2">-</div>
+                  <div class="metric-details">Request to first byte</div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">ABR Estimated Bandwidth (Mbps)</div>
+            <div class="metric-desc">Estimated available bandwidth from Hls.js, used for next quality-level selection.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="bandwidthGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bandwidthValue1">-</div>
+                  <div class="metric-details">Hls.js Bandwidth Estimate</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="bandwidthGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bandwidthValue2">-</div>
+                  <div class="metric-details">Hls.js Bandwidth Estimate</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-
-        <div class="metric">
-          <div class="metric-title">Playback Rate &amp; Stalls</div>
-          <div class="metric-desc">Current playback speed and waiting/stalled count with cumulative duration.</div>
-          <div class="metric-inline">
-            <div class="metric-chip">
-              <strong>Player 1 Playback Rate</strong>
-              <span id="playbackValue1">-</span>
-            </div>
-            <div class="metric-chip">
-              <strong>Player 2 Playback Rate</strong>
-              <span id="playbackValue2">-</span>
-            </div>
-            <div class="metric-chip">
-              <strong>Player 1 Stalls</strong>
-              <span><span id="stallValue1">0 times</span> · <span id="stallDuration1">0.0 sec</span></span>
-            </div>
-            <div class="metric-chip">
-              <strong>Player 2 Stalls</strong>
-              <span><span id="stallValue2">0 times</span> · <span id="stallDuration2">0.0 sec</span></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="metric">
-          <div class="metric-title">Segment Ingest to Render Latency (sec)</div>
-          <div class="metric-desc">Time from segment buffer ingest to on-screen playback, indicating pipeline latency.</div>
-          <div class="metric-pair">
-            <div class="metric-card">
-              <div class="metric-label">1</div>
-              <div>
-                <canvas id="ingestGraph1" width="200" height="60"></canvas>
-                <div class="metric-value" id="ingestValue1">-</div>
-                <div class="metric-details">Based on latest 30 segments</div>
+      </div>
+  
+  
+      <div class="monitor-section">
+        <h3>Buffer &amp; Playback Status</h3>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-title">Remaining Buffer (sec)</div>
+            <div class="metric-desc">Buffered media duration ahead of the current playhead. Low values may cause stalling.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="bufferGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bufferValue1">-</div>
+                  <div class="metric-details">Relative to current playhead</div>
+                </div>
               </div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">2</div>
-              <div>
-                <canvas id="ingestGraph2" width="200" height="60"></canvas>
-                <div class="metric-value" id="ingestValue2">-</div>
-                <div class="metric-details">Based on latest 30 segments</div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="bufferGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="bufferValue2">-</div>
+                  <div class="metric-details">Relative to current playhead</div>
+                </div>
               </div>
             </div>
           </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Playback Rate &amp; Stalls</div>
+            <div class="metric-desc">Current playback speed and waiting/stalled count with cumulative duration.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1 Playback Rate</strong>
+                <span id="playbackValue1">-</span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2 Playback Rate</strong>
+                <span id="playbackValue2">-</span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 1 Stalls</strong>
+                <span><span id="stallValue1">0 times</span> · <span id="stallDuration1">0.0 sec</span></span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2 Stalls</strong>
+                <span><span id="stallValue2">0 times</span> · <span id="stallDuration2">0.0 sec</span></span>
+              </div>
+            </div>
+          </div>
+  
+          <div class="metric">
+            <div class="metric-title">Segment Ingest to Render Latency (sec)</div>
+            <div class="metric-desc">Time from segment buffer ingest to on-screen playback, indicating pipeline latency.</div>
+            <div class="metric-pair">
+              <div class="metric-card">
+                <div class="metric-label">1</div>
+                <div>
+                  <canvas id="ingestGraph1" width="200" height="60"></canvas>
+                  <div class="metric-value" id="ingestValue1">-</div>
+                  <div class="metric-details">Based on latest 30 segments</div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">2</div>
+                <div>
+                  <canvas id="ingestGraph2" width="200" height="60"></canvas>
+                  <div class="metric-value" id="ingestValue2">-</div>
+                  <div class="metric-details">Based on latest 30 segments</div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <div class="metric">
+            <div class="metric-title">Timeline Difference Between Players (sec)</div>
+            <div class="metric-desc">Player 2 currentTime minus Player 1 currentTime. Useful for sync drift checks.</div>
+            <div class="metric-inline single-value">
+              <div class="metric-chip">
+                <strong>Current difference</strong>
+                <span id="timeDiffValue">-</span>
+                <small id="timeDiffDetail">-</small>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div class="metric">
-          <div class="metric-title">Timeline Difference Between Players (sec)</div>
-          <div class="metric-desc">Player 2 currentTime minus Player 1 currentTime. Useful for sync drift checks.</div>
-          <div class="metric-inline single-value">
-            <div class="metric-chip">
-              <strong>Current difference</strong>
-              <span id="timeDiffValue">-</span>
-              <small id="timeDiffDetail">-</small>
+      </div>
+  
+  
+      <div class="monitor-section">
+        <h3>Quality &amp; Frames</h3>
+        <div class="metric-group">
+          <div class="metric">
+            <div class="metric-title">Resolution / Bitrate / Codec</div>
+            <div class="metric-desc">Shows current stream resolution, advertised bitrate, and codec from Hls.js.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1</strong>
+                <span id="qualityValue1">-</span>
+                <small id="codecValue1">Codec: -</small>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2</strong>
+                <span id="qualityValue2">-</span>
+                <small id="codecValue2">Codec: -</small>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Dropped Frames / Total Frames</div>
+            <div class="metric-desc">Displays dropped frames and total decoded frames. A high ratio indicates rendering performance issues.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1</strong>
+                <span id="droppedValue1">-</span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2</strong>
+                <span id="droppedValue2">-</span>
+              </div>
+            </div>
+          </div>
+  
+  
+          <div class="metric">
+            <div class="metric-title">Error Count</div>
+            <div class="metric-desc">Cumulative network/media/other errors detected by Hls.js.</div>
+            <div class="metric-inline">
+              <div class="metric-chip">
+                <strong>Player 1</strong>
+                <span>Network: <span id="errorNetwork1">0</span></span>
+                <span>Media: <span id="errorMedia1">0</span></span>
+                <span>Other: <span id="errorOther1">0</span></span>
+              </div>
+              <div class="metric-chip">
+                <strong>Player 2</strong>
+                <span>Network: <span id="errorNetwork2">0</span></span>
+                <span>Media: <span id="errorMedia2">0</span></span>
+                <span>Other: <span id="errorOther2">0</span></span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-
-    <div class="monitor-section">
-      <h3>Quality &amp; Frames</h3>
-      <div class="metric-group">
-        <div class="metric">
-          <div class="metric-title">Resolution / Bitrate / Codec</div>
-          <div class="metric-desc">Shows current stream resolution, advertised bitrate, and codec from Hls.js.</div>
-          <div class="metric-inline">
-            <div class="metric-chip">
-              <strong>Player 1</strong>
-              <span id="qualityValue1">-</span>
-              <small id="codecValue1">Codec: -</small>
-            </div>
-            <div class="metric-chip">
-              <strong>Player 2</strong>
-              <span id="qualityValue2">-</span>
-              <small id="codecValue2">Codec: -</small>
-            </div>
-          </div>
-        </div>
-
-
-        <div class="metric">
-          <div class="metric-title">Dropped Frames / Total Frames</div>
-          <div class="metric-desc">Displays dropped frames and total decoded frames. A high ratio indicates rendering performance issues.</div>
-          <div class="metric-inline">
-            <div class="metric-chip">
-              <strong>Player 1</strong>
-              <span id="droppedValue1">-</span>
-            </div>
-            <div class="metric-chip">
-              <strong>Player 2</strong>
-              <span id="droppedValue2">-</span>
-            </div>
-          </div>
-        </div>
-
-
-        <div class="metric">
-          <div class="metric-title">Error Count</div>
-          <div class="metric-desc">Cumulative network/media/other errors detected by Hls.js.</div>
-          <div class="metric-inline">
-            <div class="metric-chip">
-              <strong>Player 1</strong>
-              <span>Network: <span id="errorNetwork1">0</span></span>
-              <span>Media: <span id="errorMedia1">0</span></span>
-              <span>Other: <span id="errorOther1">0</span></span>
-            </div>
-            <div class="metric-chip">
-              <strong>Player 2</strong>
-              <span>Network: <span id="errorNetwork2">0</span></span>
-              <span>Media: <span id="errorMedia2">0</span></span>
-              <span>Other: <span id="errorOther2">0</span></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-    <script>
-/* esm.sh - parse-exr@1.0.2 */
-var j=Uint8Array,Cn=Uint16Array,Ve=Int32Array,ue=new j([0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,0,0,0]),ce=new j([0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,0,0]),je=new j([16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]),he=function(h,y){for(var I=new Cn(31),U=0;U<31;++U)I[U]=y+=1<<h[U-1];for(var C=new Ve(I[30]),U=1;U<30;++U)for(var G=I[U];G<I[U+1];++G)C[G]=G-I[U]<<5|U;return{b:I,r:C}},fe=he(ue,2),ve=fe.b,de=fe.r;ve[28]=258,de[258]=28;var pe=he(ce,0),Xe=pe.b,wt=pe.r,ne=new Cn(32768);for(M=0;M<32768;++M)un=(M&43690)>>1|(M&21845)<<1,un=(un&52428)>>2|(un&13107)<<2,un=(un&61680)>>4|(un&3855)<<4,ne[M]=((un&65280)>>8|(un&255)<<8)>>1;var un,M,bn=(function(h,y,I){for(var U=h.length,C=0,G=new Cn(y);C<U;++C)h[C]&&++G[h[C]-1];var P=new Cn(y);for(C=1;C<y;++C)P[C]=P[C-1]+G[C-1]<<1;var W;if(I){W=new Cn(1<<y);var S=15-y;for(C=0;C<U;++C)if(h[C])for(var L=C<<4|h[C],Y=y-h[C],T=P[h[C]-1]++<<Y,F=T|(1<<Y)-1;T<=F;++T)W[ne[T]>>S]=L}else for(W=new Cn(U),C=0;C<U;++C)h[C]&&(W[C]=ne[P[h[C]-1]++]>>15-h[C]);return W}),Zn=new j(288);for(M=0;M<144;++M)Zn[M]=8;var M;for(M=144;M<256;++M)Zn[M]=9;var M;for(M=256;M<280;++M)Zn[M]=7;var M;for(M=280;M<288;++M)Zn[M]=8;var M,ge=new j(32);for(M=0;M<32;++M)ge[M]=5;var M;var nt=bn(Zn,9,1);var et=bn(ge,5,1),dn=function(h){for(var y=h[0],I=1;I<h.length;++I)h[I]>y&&(y=h[I]);return y},X=function(h,y,I){var U=y/8|0;return(h[U]|h[U+1]<<8)>>(y&7)&I},Xn=function(h,y){var I=y/8|0;return(h[I]|h[I+1]<<8|h[I+2]<<16)>>(y&7)},tt=function(h){return(h+7)/8|0},rt=function(h,y,I){return(y==null||y<0)&&(y=0),(I==null||I>h.length)&&(I=h.length),new j(h.subarray(y,I))};var it=["unexpected EOF","invalid block type","invalid length/literal","invalid distance","stream finished","no stream handler",,"no callback","invalid UTF-8 data","extra field too long","date not in range 1980-2099","filename too long","stream finishing","invalid zip data"],nn=function(h,y,I){var U=new Error(y||it[h]);if(U.code=h,Error.captureStackTrace&&Error.captureStackTrace(U,nn),!I)throw U;return U},ot=function(h,y,I,U){var C=h.length,G=U?U.length:0;if(!C||y.f&&!y.l)return I||new j(0);var P=!I,W=P||y.i!=2,S=y.i;P&&(I=new j(C*3));var L=function(Mn){var Wn=I.length;if(Mn>Wn){var Nn=new j(Math.max(Wn*2,Mn));Nn.set(I),I=Nn}},Y=y.f||0,T=y.p||0,F=y.b||0,cn=y.l,An=y.d,Sn=y.m,xn=y.n,Bn=C*8;do{if(!cn){Y=X(h,T,1);var Ln=X(h,T+1,3);if(T+=3,Ln)if(Ln==1)cn=nt,An=et,Sn=9,xn=5;else if(Ln==2){var Pn=X(h,T,31)+257,$n=X(h,T+10,15)+4,Jn=Pn+X(h,T+5,31)+1;T+=14;for(var pn=new j(Jn),Un=new j(19),D=0;D<$n;++D)Un[je[D]]=X(h,T+D*3,7);T+=$n*3;for(var K=dn(Un),Hn=(1<<K)-1,gn=bn(Un,K,1),D=0;D<Jn;){var Gn=gn[X(h,T,Hn)];T+=Gn&15;var d=Gn>>4;if(d<16)pn[D++]=d;else{var hn=0,wn=0;for(d==16?(wn=3+X(h,T,3),T+=2,hn=pn[D-1]):d==17?(wn=3+X(h,T,7),T+=3):d==18&&(wn=11+X(h,T,127),T+=7);wn--;)pn[D++]=hn}}var Tn=pn.subarray(0,Pn),en=pn.subarray(Pn);Sn=dn(Tn),xn=dn(en),cn=bn(Tn,Sn,1),An=bn(en,xn,1)}else nn(1);else{var d=tt(T)+4,kn=h[d-4]|h[d-3]<<8,_n=d+kn;if(_n>C){S&&nn(0);break}W&&L(F+kn),I.set(h.subarray(d,_n),F),y.b=F+=kn,y.p=T=_n*8,y.f=Y;continue}if(T>Bn){S&&nn(0);break}}W&&L(F+131072);for(var tn=(1<<Sn)-1,zn=(1<<xn)-1,$=T;;$=T){var hn=cn[Xn(h,T)&tn],rn=hn>>4;if(T+=hn&15,T>Bn){S&&nn(0);break}if(hn||nn(2),rn<256)I[F++]=rn;else if(rn==256){$=T,cn=null;break}else{var In=rn-254;if(rn>264){var D=rn-257,fn=ue[D];In=X(h,T,(1<<fn)-1)+ve[D],T+=fn}var E=An[Xn(h,T)&zn],on=E>>4;E||nn(3),T+=E&15;var en=Xe[on];if(on>3){var fn=ce[on];en+=Xn(h,T)&(1<<fn)-1,T+=fn}if(T>Bn){S&&nn(0);break}W&&L(F+131072);var ln=F+In;if(F<en){var Dn=G-en,Qn=Math.min(en,ln);for(Dn+F<0&&nn(3);F<Qn;++F)I[F]=U[Dn+F]}for(;F<ln;++F)I[F]=I[F-en]}}y.l=cn,y.p=$,y.b=F,y.f=Y,cn&&(Y=1,y.m=Sn,y.d=An,y.n=xn)}while(!Y);return F!=I.length&&P?rt(I,0,F):I.subarray(0,F)};var st=new j(0);var lt=function(h,y){return((h[0]&15)!=8||h[0]>>4>7||(h[0]<<8|h[1])%31)&&nn(6,"invalid zlib data"),(h[1]>>5&1)==+!y&&nn(6,"invalid zlib data: "+(h[1]&32?"need":"unexpected")+" dictionary"),(h[1]>>3&4)+2};function Fn(h,y){return ot(h.subarray(lt(h,y&&y.dictionary),-4),{i:2},y&&y.out,y&&y.dictionary)}var at=typeof TextDecoder<"u"&&new TextDecoder,ut=0;try{at.decode(st,{stream:!0}),ut=1}catch{}var ee=1015,qn=1016,ht=1023,ft=1028,vt="",we="srgb-linear",Kn=pt();function pt(){let h=new ArrayBuffer(4),y=new Float32Array(h),I=new Uint32Array(h),U=new Uint32Array(512),C=new Uint32Array(512);for(let S=0;S<256;++S){let L=S-127;L<-27?(U[S]=0,U[S|256]=32768,C[S]=24,C[S|256]=24):L<-14?(U[S]=1024>>-L-14,U[S|256]=1024>>-L-14|32768,C[S]=-L-1,C[S|256]=-L-1):L<=15?(U[S]=L+15<<10,U[S|256]=L+15<<10|32768,C[S]=13,C[S|256]=13):L<128?(U[S]=31744,U[S|256]=64512,C[S]=24,C[S|256]=24):(U[S]=31744,U[S|256]=64512,C[S]=13,C[S|256]=13)}let G=new Uint32Array(2048),P=new Uint32Array(64),W=new Uint32Array(64);for(let S=1;S<1024;++S){let L=S<<13,Y=0;for(;(L&8388608)===0;)L<<=1,Y-=8388608;L&=-8388609,Y+=947912704,G[S]=L|Y}for(let S=1024;S<2048;++S)G[S]=939524096+(S-1024<<13);for(let S=1;S<31;++S)P[S]=S<<23;P[31]=1199570944,P[32]=2147483648;for(let S=33;S<63;++S)P[S]=2147483648+(S-32<<23);P[63]=3347054592;for(let S=1;S<64;++S)S!==32&&(W[S]=1024);return{floatView:y,uint32View:I,baseTable:U,shiftTable:C,mantissaTable:G,exponentTable:P,offsetTable:W}}var ye={toHalfFloat(h){Math.abs(h)>65504&&console.warn("DataUtils.toHalfFloat(): Value out of range."),h=Math.max(-65504,Math.min(h,65504)),Kn.floatView[0]=h;let y=Kn.uint32View[0],I=y>>23&511;return Kn.baseTable[I]+((y&8388607)>>Kn.shiftTable[I])}};function gt(h,y=qn){let pn=Math.pow(2.7182818,2.2);function Un(n,e){let t=0;for(let o=0;o<65536;++o)(o==0||n[o>>3]&1<<(o&7))&&(e[t++]=o);let r=t-1;for(;t<65536;)e[t++]=0;return r}function D(n){for(let e=0;e<16384;e++)n[e]={},n[e].len=0,n[e].lit=0,n[e].p=null}let K={l:0,c:0,lc:0};function Hn(n,e,t,r,o){for(;t<n;)e=e<<8|oe(r,o),t+=8;t-=n,K.l=e>>t&(1<<n)-1,K.c=e,K.lc=t}let gn=new Array(59);function Gn(n){for(let t=0;t<=58;++t)gn[t]=0;for(let t=0;t<65537;++t)gn[n[t]]+=1;let e=0;for(let t=58;t>0;--t){let r=e+gn[t]>>1;gn[t]=e,e=r}for(let t=0;t<65537;++t){let r=n[t];r>0&&(n[t]=r|gn[r]++<<6)}}function hn(n,e,t,r,o,i){let a=e,c=0,u=0;for(;r<=o;r++){if(a.value-e.value>t)return!1;Hn(6,c,u,n,a);let l=K.l;if(c=K.c,u=K.lc,i[r]=l,l==63){if(a.value-e.value>t)throw new Error("Something wrong with hufUnpackEncTable");Hn(8,c,u,n,a);let s=K.l+6;if(c=K.c,u=K.lc,r+s>o+1)throw new Error("Something wrong with hufUnpackEncTable");for(;s--;)i[r++]=0;r--}else if(l>=59){let s=l-59+2;if(r+s>o+1)throw new Error("Something wrong with hufUnpackEncTable");for(;s--;)i[r++]=0;r--}}Gn(i)}function wn(n){return n&63}function Tn(n){return n>>6}function en(n,e,t,r){for(;e<=t;e++){let o=Tn(n[e]),i=wn(n[e]);if(o>>i)throw new Error("Invalid table entry");if(i>14){let a=r[o>>i-14];if(a.len)throw new Error("Invalid table entry");if(a.lit++,a.p){let c=a.p;a.p=new Array(a.lit);for(let u=0;u<a.lit-1;++u)a.p[u]=c[u]}else a.p=new Array(1);a.p[a.lit-1]=e}else if(i){let a=0;for(let c=1<<14-i;c>0;c--){let u=r[(o<<14-i)+a];if(u.len||u.p)throw new Error("Invalid table entry");u.len=i,u.lit=e,a++}}}return!0}let tn={c:0,lc:0};function zn(n,e,t,r){n=n<<8|oe(t,r),e+=8,tn.c=n,tn.lc=e}let $={c:0,lc:0};function rn(n,e,t,r,o,i,a,c,u){if(n==e){r<8&&(zn(t,r,o,i),t=tn.c,r=tn.lc),r-=8;let l=t>>r;if(l=new Uint8Array([l])[0],c.value+l>u)return!1;let s=a[c.value-1];for(;l-- >0;)a[c.value++]=s}else if(c.value<u)a[c.value++]=n;else return!1;$.c=t,$.lc=r}function In(n){return n&65535}function fn(n){let e=In(n);return e>32767?e-65536:e}let E={a:0,b:0};function on(n,e){let t=fn(n),o=fn(e),i=t+(o&1)+(o>>1),a=i,c=i-o;E.a=a,E.b=c}function ln(n,e){let t=In(n),r=In(e),o=t-(r>>1)&65535,i=r+o-32768&65535;E.a=i,E.b=o}function Dn(n,e,t,r,o,i,a){let c=a<16384,u=t>o?o:t,l=1,s,f;for(;l<=u;)l<<=1;for(l>>=1,s=l,l>>=1;l>=1;){f=0;let w=f+i*(o-s),v=i*l,x=i*s,p=r*l,m=r*s,A,O,B,q;for(;f<=w;f+=x){let Z=f,z=f+r*(t-s);for(;Z<=z;Z+=m){let k=Z+p,V=Z+v,_=V+p;c?(on(n[Z+e],n[V+e]),A=E.a,B=E.b,on(n[k+e],n[_+e]),O=E.a,q=E.b,on(A,O),n[Z+e]=E.a,n[k+e]=E.b,on(B,q),n[V+e]=E.a,n[_+e]=E.b):(ln(n[Z+e],n[V+e]),A=E.a,B=E.b,ln(n[k+e],n[_+e]),O=E.a,q=E.b,ln(A,O),n[Z+e]=E.a,n[k+e]=E.b,ln(B,q),n[V+e]=E.a,n[_+e]=E.b)}if(t&l){let k=Z+v;c?on(n[Z+e],n[k+e]):ln(n[Z+e],n[k+e]),A=E.a,n[k+e]=E.b,n[Z+e]=A}}if(o&l){let Z=f,z=f+r*(t-s);for(;Z<=z;Z+=m){let k=Z+p;c?on(n[Z+e],n[k+e]):ln(n[Z+e],n[k+e]),A=E.a,n[k+e]=E.b,n[Z+e]=A}}s=l,l>>=1}return f}function Qn(n,e,t,r,o,i,a,c,u){let l=0,s=0,f=a,w=Math.trunc(r.value+(o+7)/8);for(;r.value<w;)for(zn(l,s,t,r),l=tn.c,s=tn.lc;s>=14;){let x=l>>s-14&16383,p=e[x];if(p.len)s-=p.len,rn(p.lit,i,l,s,t,r,c,u,f),l=$.c,s=$.lc;else{if(!p.p)throw new Error("hufDecode issues");let m;for(m=0;m<p.lit;m++){let A=wn(n[p.p[m]]);for(;s<A&&r.value<w;)zn(l,s,t,r),l=tn.c,s=tn.lc;if(s>=A&&Tn(n[p.p[m]])==(l>>s-A&(1<<A)-1)){s-=A,rn(p.p[m],i,l,s,t,r,c,u,f),l=$.c,s=$.lc;break}}if(m==p.lit)throw new Error("hufDecode issues")}}let v=8-o&7;for(l>>=v,s-=v;s>0;){let x=e[l<<14-s&16383];if(x.len)s-=x.len,rn(x.lit,i,l,s,t,r,c,u,f),l=$.c,s=$.lc;else throw new Error("hufDecode issues")}return!0}function Mn(n,e,t,r,o,i){let a={value:0},c=t.value,u=Q(e,t),l=Q(e,t);t.value+=4;let s=Q(e,t);if(t.value+=4,u<0||u>=65537||l<0||l>=65537)throw new Error("Something wrong with HUF_ENCSIZE");let f=new Array(65537),w=new Array(16384);D(w);let v=r-(t.value-c);if(hn(n,t,v,u,l,f),s>8*(r-(t.value-c)))throw new Error("Something wrong with hufUncompress");en(f,u,l,w),Qn(f,w,n,t,s,l,i,o,a)}function Wn(n,e,t){for(let r=0;r<t;++r)e[r]=n[e[r]]}function Nn(n){for(let e=1;e<n.length;e++){let t=n[e-1]+n[e]-128;n[e]=t}}function te(n,e){let t=0,r=Math.floor((n.length+1)/2),o=0,i=n.length-1;for(;!(o>i||(e[o++]=n[t++],o>i));)e[o++]=n[r++]}function re(n){let e=n.byteLength,t=new Array,r=0,o=new DataView(n);for(;e>0;){let i=o.getInt8(r++);if(i<0){let a=-i;e-=a+1;for(let c=0;c<a;c++)t.push(o.getUint8(r++))}else{let a=i;e-=2;let c=o.getUint8(r++);for(let u=0;u<a+1;u++)t.push(c)}}return t}function me(n,e,t,r,o,i){let a=new DataView(i.buffer),c=t[n.idx[0]].width,u=t[n.idx[0]].height,l=3,s=Math.floor(c/8),f=Math.ceil(c/8),w=Math.ceil(u/8),v=c-(f-1)*8,x=u-(w-1)*8,p={value:0},m=new Array(l),A=new Array(l),O=new Array(l),B=new Array(l),q=new Array(l);for(let z=0;z<l;++z)q[z]=e[n.idx[z]],m[z]=z<1?0:m[z-1]+f*w,A[z]=new Float32Array(64),O[z]=new Uint16Array(64),B[z]=new Uint16Array(f*64);for(let z=0;z<w;++z){let k=8;z==w-1&&(k=x);let V=8;for(let N=0;N<f;++N){N==f-1&&(V=v);for(let b=0;b<l;++b)O[b].fill(0),O[b][0]=o[m[b]++],Se(p,r,O[b]),xe(O[b],A[b]),Ie(A[b]);l==3&&Ce(A);for(let b=0;b<l;++b)Ae(A[b],B[b],N*64)}let _=0;for(let N=0;N<l;++N){let b=t[n.idx[N]].type;for(let an=8*z;an<8*z+k;++an){_=q[N][an];for(let On=0;On<s;++On){let sn=On*64+(an&7)*8;a.setUint16(_+0*b,B[N][sn+0],!0),a.setUint16(_+2*b,B[N][sn+1],!0),a.setUint16(_+4*b,B[N][sn+2],!0),a.setUint16(_+6*b,B[N][sn+3],!0),a.setUint16(_+8*b,B[N][sn+4],!0),a.setUint16(_+10*b,B[N][sn+5],!0),a.setUint16(_+12*b,B[N][sn+6],!0),a.setUint16(_+14*b,B[N][sn+7],!0),_+=16*b}}if(s!=f)for(let an=8*z;an<8*z+k;++an){let On=q[N][an]+8*s*2*b,sn=s*64+(an&7)*8;for(let Rn=0;Rn<V;++Rn)a.setUint16(On+Rn*2*b,B[N][sn+Rn],!0)}}}let Z=new Uint16Array(c);a=new DataView(i.buffer);for(let z=0;z<l;++z){t[n.idx[z]].decoded=!0;let k=t[n.idx[z]].type;if(t[z].type==2)for(let V=0;V<u;++V){let _=q[z][V];for(let N=0;N<c;++N)Z[N]=a.getUint16(_+N*2*k,!0);for(let N=0;N<c;++N)a.setFloat32(_+N*2*k,g(Z[N]),!0)}}}function Se(n,e,t){let r,o=1;for(;o<64;)r=e[n.value],r==65280?o=64:r>>8==255?o+=r&255:(t[o]=r,o++),n.value++}function xe(n,e){e[0]=g(n[0]),e[1]=g(n[1]),e[2]=g(n[5]),e[3]=g(n[6]),e[4]=g(n[14]),e[5]=g(n[15]),e[6]=g(n[27]),e[7]=g(n[28]),e[8]=g(n[2]),e[9]=g(n[4]),e[10]=g(n[7]),e[11]=g(n[13]),e[12]=g(n[16]),e[13]=g(n[26]),e[14]=g(n[29]),e[15]=g(n[42]),e[16]=g(n[3]),e[17]=g(n[8]),e[18]=g(n[12]),e[19]=g(n[17]),e[20]=g(n[25]),e[21]=g(n[30]),e[22]=g(n[41]),e[23]=g(n[43]),e[24]=g(n[9]),e[25]=g(n[11]),e[26]=g(n[18]),e[27]=g(n[24]),e[28]=g(n[31]),e[29]=g(n[40]),e[30]=g(n[44]),e[31]=g(n[53]),e[32]=g(n[10]),e[33]=g(n[19]),e[34]=g(n[23]),e[35]=g(n[32]),e[36]=g(n[39]),e[37]=g(n[45]),e[38]=g(n[52]),e[39]=g(n[54]),e[40]=g(n[20]),e[41]=g(n[22]),e[42]=g(n[33]),e[43]=g(n[38]),e[44]=g(n[46]),e[45]=g(n[51]),e[46]=g(n[55]),e[47]=g(n[60]),e[48]=g(n[21]),e[49]=g(n[34]),e[50]=g(n[37]),e[51]=g(n[47]),e[52]=g(n[50]),e[53]=g(n[56]),e[54]=g(n[59]),e[55]=g(n[61]),e[56]=g(n[35]),e[57]=g(n[36]),e[58]=g(n[48]),e[59]=g(n[49]),e[60]=g(n[57]),e[61]=g(n[58]),e[62]=g(n[62]),e[63]=g(n[63])}function Ie(n){let e=.5*Math.cos(.7853975),t=.5*Math.cos(3.14159/16),r=.5*Math.cos(3.14159/8),o=.5*Math.cos(3*3.14159/16),i=.5*Math.cos(5*3.14159/16),a=.5*Math.cos(3*3.14159/8),c=.5*Math.cos(7*3.14159/16),u=new Array(4),l=new Array(4),s=new Array(4),f=new Array(4);for(let w=0;w<8;++w){let v=w*8;u[0]=r*n[v+2],u[1]=a*n[v+2],u[2]=r*n[v+6],u[3]=a*n[v+6],l[0]=t*n[v+1]+o*n[v+3]+i*n[v+5]+c*n[v+7],l[1]=o*n[v+1]-c*n[v+3]-t*n[v+5]-i*n[v+7],l[2]=i*n[v+1]-t*n[v+3]+c*n[v+5]+o*n[v+7],l[3]=c*n[v+1]-i*n[v+3]+o*n[v+5]-t*n[v+7],s[0]=e*(n[v+0]+n[v+4]),s[3]=e*(n[v+0]-n[v+4]),s[1]=u[0]+u[3],s[2]=u[1]-u[2],f[0]=s[0]+s[1],f[1]=s[3]+s[2],f[2]=s[3]-s[2],f[3]=s[0]-s[1],n[v+0]=f[0]+l[0],n[v+1]=f[1]+l[1],n[v+2]=f[2]+l[2],n[v+3]=f[3]+l[3],n[v+4]=f[3]-l[3],n[v+5]=f[2]-l[2],n[v+6]=f[1]-l[1],n[v+7]=f[0]-l[0]}for(let w=0;w<8;++w)u[0]=r*n[16+w],u[1]=a*n[16+w],u[2]=r*n[48+w],u[3]=a*n[48+w],l[0]=t*n[8+w]+o*n[24+w]+i*n[40+w]+c*n[56+w],l[1]=o*n[8+w]-c*n[24+w]-t*n[40+w]-i*n[56+w],l[2]=i*n[8+w]-t*n[24+w]+c*n[40+w]+o*n[56+w],l[3]=c*n[8+w]-i*n[24+w]+o*n[40+w]-t*n[56+w],s[0]=e*(n[w]+n[32+w]),s[3]=e*(n[w]-n[32+w]),s[1]=u[0]+u[3],s[2]=u[1]-u[2],f[0]=s[0]+s[1],f[1]=s[3]+s[2],f[2]=s[3]-s[2],f[3]=s[0]-s[1],n[0+w]=f[0]+l[0],n[8+w]=f[1]+l[1],n[16+w]=f[2]+l[2],n[24+w]=f[3]+l[3],n[32+w]=f[3]-l[3],n[40+w]=f[2]-l[2],n[48+w]=f[1]-l[1],n[56+w]=f[0]-l[0]}function Ce(n){for(let e=0;e<64;++e){let t=n[0][e],r=n[1][e],o=n[2][e];n[0][e]=t+1.5747*o,n[1][e]=t-.1873*r-.4682*o,n[2][e]=t+1.8556*r}}function Ae(n,e,t){for(let r=0;r<64;++r)e[t+r]=ye.toHalfFloat(Ue(n[r]))}function Ue(n){return n<=1?Math.sign(n)*Math.pow(Math.abs(n),2.2):Math.sign(n)*Math.pow(pn,Math.abs(n)-1)}function Vn(n){return new DataView(n.array.buffer,n.offset.value,n.size)}function Te(n){let e=n.viewer.buffer.slice(n.offset.value,n.offset.value+n.size),t=new Uint8Array(re(e)),r=new Uint8Array(t.length);return Nn(t),te(t,r),new DataView(r.buffer)}function jn(n){let e=n.array.slice(n.offset.value,n.offset.value+n.size),t=Fn(e),r=new Uint8Array(t.length);return Nn(t),te(t,r),new DataView(r.buffer)}function ze(n){let e=n.viewer,t={value:n.offset.value},r=new Uint16Array(n.columns*n.lines*(n.inputChannels.length*n.type)),o=new Uint8Array(8192),i=0,a=new Array(n.inputChannels.length);for(let x=0,p=n.inputChannels.length;x<p;x++)a[x]={},a[x].start=i,a[x].end=a[x].start,a[x].nx=n.columns,a[x].ny=n.lines,a[x].size=n.type,i+=a[x].nx*a[x].ny*a[x].size;let c=En(e,t),u=En(e,t);if(u>=8192)throw new Error("Something is wrong with PIZ_COMPRESSION BITMAP_SIZE");if(c<=u)for(let x=0;x<u-c+1;x++)o[x+c]=vn(e,t);let l=new Uint16Array(65536),s=Un(o,l),f=Q(e,t);Mn(n.array,e,t,f,r,i);for(let x=0;x<n.inputChannels.length;++x){let p=a[x];for(let m=0;m<a[x].size;++m)Dn(r,p.start+m,p.nx,p.size,p.ny,p.nx*p.size,s)}Wn(l,r,i);let w=0,v=new Uint8Array(r.buffer.byteLength);for(let x=0;x<n.lines;x++)for(let p=0;p<n.inputChannels.length;p++){let m=a[p],A=m.nx*m.size,O=new Uint8Array(r.buffer,m.end*2,A*2);v.set(O,w),w+=A*2,m.end+=A}return new DataView(v.buffer)}function Me(n){let e=n.array.slice(n.offset.value,n.offset.value+n.size),t=Fn(e),r=n.inputChannels.length*n.lines*n.columns*n.totalBytes,o=new ArrayBuffer(r),i=new DataView(o),a=0,c=0,u=new Array(4);for(let l=0;l<n.lines;l++)for(let s=0;s<n.inputChannels.length;s++){let f=0;switch(n.inputChannels[s].pixelType){case 1:u[0]=a,u[1]=u[0]+n.columns,a=u[1]+n.columns;for(let v=0;v<n.columns;++v){let x=t[u[0]++]<<8|t[u[1]++];f+=x,i.setUint16(c,f,!0),c+=2}break;case 2:u[0]=a,u[1]=u[0]+n.columns,u[2]=u[1]+n.columns,a=u[2]+n.columns;for(let v=0;v<n.columns;++v){let x=t[u[0]++]<<24|t[u[1]++]<<16|t[u[2]++]<<8;f+=x,i.setUint32(c,f,!0),c+=4}break}}return i}function ie(n){let e=n.viewer,t={value:n.offset.value},r=new Uint8Array(n.columns*n.lines*(n.inputChannels.length*n.type*2)),o={version:R(e,t),unknownUncompressedSize:R(e,t),unknownCompressedSize:R(e,t),acCompressedSize:R(e,t),dcCompressedSize:R(e,t),rleCompressedSize:R(e,t),rleUncompressedSize:R(e,t),rleRawSize:R(e,t),totalAcUncompressedCount:R(e,t),totalDcUncompressedCount:R(e,t),acCompression:R(e,t)};if(o.version<2)throw new Error("EXRLoader.parse: "+yn.compression+" version "+o.version+" is unsupported");let i=new Array,a=En(e,t)-2;for(;a>0;){let p=Yn(e.buffer,t),m=vn(e,t),A=m>>2&3,O=(m>>4)-1,B=new Int8Array([O])[0],q=vn(e,t);i.push({name:p,index:B,type:q,compression:A}),a-=p.length+3}let c=yn.channels,u=new Array(n.inputChannels.length);for(let p=0;p<n.inputChannels.length;++p){let m=u[p]={},A=c[p];m.name=A.name,m.compression=0,m.decoded=!1,m.type=A.pixelType,m.pLinear=A.pLinear,m.width=n.columns,m.height=n.lines}let l={idx:new Array(3)};for(let p=0;p<n.inputChannels.length;++p){let m=u[p];for(let A=0;A<i.length;++A){let O=i[A];m.name==O.name&&(m.compression=O.compression,O.index>=0&&(l.idx[O.index]=p),m.offset=p)}}let s,f,w;if(o.acCompressedSize>0)switch(o.acCompression){case 0:s=new Uint16Array(o.totalAcUncompressedCount),Mn(n.array,e,t,o.acCompressedSize,s,o.totalAcUncompressedCount);break;case 1:let p=n.array.slice(t.value,t.value+o.totalAcUncompressedCount),m=Fn(p);s=new Uint16Array(m.buffer),t.value+=o.totalAcUncompressedCount;break}if(o.dcCompressedSize>0){let p={array:n.array,offset:t,size:o.dcCompressedSize};f=new Uint16Array(jn(p).buffer),t.value+=o.dcCompressedSize}if(o.rleRawSize>0){let p=n.array.slice(t.value,t.value+o.rleCompressedSize),m=Fn(p);w=re(m.buffer),t.value+=o.rleCompressedSize}let v=0,x=new Array(u.length);for(let p=0;p<x.length;++p)x[p]=new Array;for(let p=0;p<n.lines;++p)for(let m=0;m<u.length;++m)x[m].push(v),v+=u[m].width*n.type*2;me(l,x,u,s,f,r);for(let p=0;p<u.length;++p){let m=u[p];if(!m.decoded)switch(m.compression){case 2:let A=0,O=0;for(let B=0;B<n.lines;++B){let q=x[p][A];for(let Z=0;Z<m.width;++Z){for(let z=0;z<2*m.type;++z)r[q++]=w[O+z*m.width*m.height];O++}A++}break;default:throw new Error("EXRLoader.parse: unsupported channel compression")}}return new DataView(r.buffer)}function Yn(n,e){let t=new Uint8Array(n),r=0;for(;t[e.value+r]!=0;)r+=1;let o=new TextDecoder().decode(t.slice(e.value,e.value+r));return e.value=e.value+r+1,o}function Ne(n,e,t){let r=new TextDecoder().decode(new Uint8Array(n).slice(e.value,e.value+t));return e.value=e.value+t,r}function Ee(n,e){let t=J(n,e),r=Q(n,e);return[t,r]}function Oe(n,e){let t=Q(n,e),r=Q(n,e);return[t,r]}function J(n,e){let t=n.getInt32(e.value,!0);return e.value=e.value+4,t}function Q(n,e){let t=n.getUint32(e.value,!0);return e.value=e.value+4,t}function oe(n,e){let t=n[e.value];return e.value=e.value+1,t}function vn(n,e){let t=n.getUint8(e.value);return e.value=e.value+1,t}let R=function(n,e){let t;return"getBigInt64"in DataView.prototype?t=Number(n.getBigInt64(e.value,!0)):t=n.getUint32(e.value+4,!0)+Number(n.getUint32(e.value,!0)<<32),e.value+=8,t};function H(n,e){let t=n.getFloat32(e.value,!0);return e.value+=4,t}function be(n,e){return ye.toHalfFloat(H(n,e))}function g(n){let e=(n&31744)>>10,t=n&1023;return(n>>15?-1:1)*(e?e===31?t?NaN:1/0:Math.pow(2,e-15)*(1+t/1024):6103515625e-14*(t/1024))}function En(n,e){let t=n.getUint16(e.value,!0);return e.value+=2,t}function Ze(n,e){return g(En(n,e))}function Fe(n,e,t,r){let o=t.value,i=[];for(;t.value<o+r-1;){let a=Yn(e,t),c=J(n,t),u=vn(n,t);t.value+=3;let l=J(n,t),s=J(n,t);i.push({name:a,pixelType:c,pLinear:u,xSampling:l,ySampling:s})}return t.value+=1,i}function Be(n,e){let t=H(n,e),r=H(n,e),o=H(n,e),i=H(n,e),a=H(n,e),c=H(n,e),u=H(n,e),l=H(n,e);return{redX:t,redY:r,greenX:o,greenY:i,blueX:a,blueY:c,whiteX:u,whiteY:l}}function Le(n,e){let t=["NO_COMPRESSION","RLE_COMPRESSION","ZIPS_COMPRESSION","ZIP_COMPRESSION","PIZ_COMPRESSION","PXR24_COMPRESSION","B44_COMPRESSION","B44A_COMPRESSION","DWAA_COMPRESSION","DWAB_COMPRESSION"],r=vn(n,e);return t[r]}function ke(n,e){let t=J(n,e),r=J(n,e),o=J(n,e),i=J(n,e);return{xMin:t,yMin:r,xMax:o,yMax:i}}function _e(n,e){let t=["INCREASING_Y","DECREASING_Y","RANDOM_Y"],r=vn(n,e);return t[r]}function Pe(n,e){let t=["ENVMAP_LATLONG","ENVMAP_CUBE"],r=vn(n,e);return t[r]}function He(n,e){let t=["ONE_LEVEL","MIPMAP_LEVELS","RIPMAP_LEVELS"],r=["ROUND_DOWN","ROUND_UP"],o=Q(n,e),i=Q(n,e),a=vn(n,e);return{xSize:o,ySize:i,levelMode:t[a&15],roundingMode:r[a>>4]}}function Ge(n,e){let t=H(n,e),r=H(n,e);return[t,r]}function De(n,e){let t=H(n,e),r=H(n,e),o=H(n,e);return[t,r,o]}function We(n,e,t,r,o){if(r==="string"||r==="stringvector"||r==="iccProfile")return Ne(e,t,o);if(r==="chlist")return Fe(n,e,t,o);if(r==="chromaticities")return Be(n,t);if(r==="compression")return Le(n,t);if(r==="box2i")return ke(n,t);if(r==="envmap")return Pe(n,t);if(r==="tiledesc")return He(n,t);if(r==="lineOrder")return _e(n,t);if(r==="float")return H(n,t);if(r==="v2f")return Ge(n,t);if(r==="v3f")return De(n,t);if(r==="int")return J(n,t);if(r==="rational")return Ee(n,t);if(r==="timecode")return Oe(n,t);if(r==="preview")return t.value+=o,"skipped";t.value+=o}function Ye(n,e){let t=Math.log2(n);return e=="ROUND_DOWN"?Math.floor(t):Math.ceil(t)}function Re(n,e,t){let r=0;switch(n.levelMode){case"ONE_LEVEL":r=1;break;case"MIPMAP_LEVELS":r=Ye(Math.max(e,t),n.roundingMode)+1;break;case"RIPMAP_LEVELS":throw new Error("EXRLoader: RIPMAP_LEVELS tiles currently unsupported.")}return r}function se(n,e,t,r){let o=new Array(n);for(let i=0;i<n;i++){let a=1<<i,c=e/a|0;r=="ROUND_UP"&&c*a<e&&(c+=1);let u=Math.max(c,1);o[i]=(u+t-1)/t|0}return o}function qe(n){let e=n.offset,t={value:0};for(let r=0;r<n.tileCount;r++){let o=J(n.viewer,e),i=J(n.viewer,e);e.value+=8,n.size=Q(n.viewer,e);let a=o*n.blockWidth,c=i*n.blockHeight;n.columns=a+n.blockWidth>n.width?n.width-a:n.blockWidth,n.lines=c+n.blockHeight>n.height?n.height-c:n.blockHeight;let u=n.columns*n.totalBytes,s=n.size<n.lines*u?n.uncompress(n):Vn(n);e.value+=n.size;for(let f=0;f<n.lines;f++){let w=f*n.columns*n.totalBytes;for(let v=0;v<n.inputChannels.length;v++){let x=yn.channels[v].name,p=n.channelByteOffsets[x]*n.columns,m=n.decodeChannels[x];if(m===void 0)continue;t.value=w+p;let A=(n.height-(1+c+f))*n.outLineWidth;for(let O=0;O<n.columns;O++){let B=A+(O+a)*n.outputChannels+m;n.byteArray[B]=n.getter(s,t)}}}}}function Ke(n){let e=n.offset,t={value:0};for(let r=0;r<n.height/n.blockHeight;r++){let o=J(n.viewer,e)-yn.dataWindow.yMin;n.size=Q(n.viewer,e),n.lines=o+n.blockHeight>n.height?n.height-o:n.blockHeight;let i=n.columns*n.totalBytes,c=n.size<n.lines*i?n.uncompress(n):Vn(n);e.value+=n.size;for(let u=0;u<n.blockHeight;u++){let l=r*n.blockHeight,s=u+n.scanOrder(l);if(s>=n.height)continue;let f=u*i,w=(n.height-1-s)*n.outLineWidth;for(let v=0;v<n.inputChannels.length;v++){let x=yn.channels[v].name,p=n.channelByteOffsets[x]*n.columns,m=n.decodeChannels[x];if(m!==void 0){t.value=f+p;for(let A=0;A<n.columns;A++){let O=w+A*n.outputChannels+m;n.byteArray[O]=n.getter(c,t)}}}}}}function $e(n,e,t){let r={};if(n.getUint32(0,!0)!=20000630)throw new Error("EXRLoader: Provided file doesn't appear to be in OpenEXR format.");r.version=n.getUint8(4);let o=n.getUint8(5);r.spec={singleTile:!!(o&2),longName:!!(o&4),deepFormat:!!(o&8),multiPart:!!(o&16)},t.value=8;let i=!0;for(;i;){let a=Yn(e,t);if(a==0)i=!1;else{let c=Yn(e,t),u=Q(n,t),l=We(n,e,t,c,u);l===void 0?console.warn(`EXRLoader: Skipped unknown header attribute type '${c}'.`):r[a]=l}}if((o&-7)!=0)throw console.error("EXRHeader:",r),new Error("EXRLoader: Provided file is currently unsupported.");return r}function Je(n,e,t,r,o){let i={size:0,viewer:e,array:t,offset:r,width:n.dataWindow.xMax-n.dataWindow.xMin+1,height:n.dataWindow.yMax-n.dataWindow.yMin+1,inputChannels:n.channels,channelByteOffsets:{},scanOrder:null,totalBytes:null,columns:null,lines:null,type:null,uncompress:null,getter:null,format:null,colorSpace:we};switch(n.compression){case"NO_COMPRESSION":i.blockHeight=1,i.uncompress=Vn;break;case"RLE_COMPRESSION":i.blockHeight=1,i.uncompress=Te;break;case"ZIPS_COMPRESSION":i.blockHeight=1,i.uncompress=jn;break;case"ZIP_COMPRESSION":i.blockHeight=16,i.uncompress=jn;break;case"PIZ_COMPRESSION":i.blockHeight=32,i.uncompress=ze;break;case"PXR24_COMPRESSION":i.blockHeight=16,i.uncompress=Me;break;case"DWAA_COMPRESSION":i.blockHeight=32,i.uncompress=ie;break;case"DWAB_COMPRESSION":i.blockHeight=256,i.uncompress=ie;break;default:throw new Error("EXRLoader.parse: "+n.compression+" is unsupported")}let a={};for(let s of n.channels)switch(s.name){case"Y":case"R":case"G":case"B":case"A":a[s.name]=!0,i.type=s.pixelType}let c=!1;if(a.R&&a.G&&a.B)c=!a.A,i.outputChannels=4,i.decodeChannels={R:0,G:1,B:2,A:3};else if(a.Y)i.outputChannels=1,i.decodeChannels={Y:0};else throw new Error("EXRLoader.parse: file contains unsupported data channels.");if(i.type==1)switch(o){case ee:i.getter=Ze;break;case qn:i.getter=En;break}else if(i.type==2)switch(o){case ee:i.getter=H;break;case qn:i.getter=be}else throw new Error("EXRLoader.parse: unsupported pixelType "+i.type+" for "+n.compression+".");i.columns=i.width;let u=i.width*i.height*i.outputChannels;switch(o){case ee:i.byteArray=new Float32Array(u),c&&i.byteArray.fill(1,0,u);break;case qn:i.byteArray=new Uint16Array(u),c&&i.byteArray.fill(15360,0,u);break;default:console.error("EXRLoader: unsupported type: ",o);break}let l=0;for(let s of n.channels)i.decodeChannels[s.name]!==void 0&&(i.channelByteOffsets[s.name]=l),l+=s.pixelType*2;if(i.totalBytes=l,i.outLineWidth=i.width*i.outputChannels,n.lineOrder==="INCREASING_Y"?i.scanOrder=s=>s:i.scanOrder=s=>i.height-1-s,i.outputChannels==4?(i.format=ht,i.colorSpace=we):(i.format=ft,i.colorSpace=vt),n.spec.singleTile){i.blockHeight=n.tiles.ySize,i.blockWidth=n.tiles.xSize;let s=Re(n.tiles,i.width,i.height),f=se(s,i.width,n.tiles.xSize,n.tiles.roundingMode),w=se(s,i.height,n.tiles.ySize,n.tiles.roundingMode);i.tileCount=f[0]*w[0];for(let v=0;v<s;v++)for(let x=0;x<w[v];x++)for(let p=0;p<f[v];p++)R(e,r);i.decode=qe.bind(i)}else{i.blockWidth=i.width;let s=Math.ceil(i.height/i.blockHeight);for(let f=0;f<s;f++)R(e,r);i.decode=Ke.bind(i)}return i}let le={value:0},ae=new DataView(h),Qe=new Uint8Array(h),yn=$e(ae,h,le),mn=Je(yn,ae,Qe,le,y);return mn.decode(mn),{header:yn,width:mn.width,height:mn.height,data:mn.byteArray,format:mn.format,colorSpace:mn.colorSpace}}var yt=gt;window.parseExr=yt; window.EXRFloatType=1015;
-  </script>
-
-<script>
-    const PLAYER_IDS = [1,2,3,4];
-    const DEFAULT_LAYOUT_ID = '1x2';
-    const LAYOUTS = {
-      '1x2': { label: '1x2', playerCount: 2, columns: 2, rows: 1 },
-      '2x2': { label: '2x2', playerCount: 4, columns: 2, rows: 2 },
-      '1x4': { label: '1x4', playerCount: 4, columns: 4, rows: 1 },
-      '1x3': { label: '1x3', playerCount: 3, columns: 3, rows: 1 }
-    };
-    const getLayoutConfig = (layoutId)=>LAYOUTS[layoutId] || LAYOUTS[DEFAULT_LAYOUT_ID];
-    let activeLayoutId = DEFAULT_LAYOUT_ID;
-    let activePlayerCount = getLayoutConfig(DEFAULT_LAYOUT_ID).playerCount;
-    const videos = PLAYER_IDS.map(i=>document.getElementById("video"+i));
-    const images = PLAYER_IDS.map(i=>document.getElementById("image"+i));
-    const syncedCursors = PLAYER_IDS.map(i=>document.getElementById("syncCursor"+i));
-    const boxes = PLAYER_IDS.map(i=>document.getElementById("box"+i));
-    const videoColumns = boxes.map(box=>box ? box.closest('.video-column') : null);
-    const labels = PLAYER_IDS.map(i=>document.getElementById("label"+i));
-    const gridEl = document.querySelector('.grid');
-    const compareLayoutSelect = document.getElementById("compareLayoutSelect");
-    const captureStillButton = document.getElementById("captureStillButton");
-    const monitorPanel = document.getElementById("monitorPanel");
-    const monitorCloseButton = monitorPanel ? monitorPanel.querySelector('.monitor-close') : null;
-    const playlistToggle = document.getElementById("playlistToggle");
-    const playlistOverlay = document.getElementById("playlistOverlay");
-    const playlistBody = document.getElementById("playlistBody");
-    const playlistClose = document.getElementById("playlistClose");
-    const playlistEditButtons = Array.from(document.querySelectorAll('.playlist-edit-btn'));
-    const multiAddButtons = Array.from(document.querySelectorAll('.multi-add-btn'));
-    const bulkModals = Array.from(document.querySelectorAll('.bulk-modal'));
-
-
-    const getEls = prefix => PLAYER_IDS.map(i=>document.getElementById(prefix + i));
-    const sparklineCanvases = {
-      speed: getEls("speedGraph"),
-      latency: getEls("latencyGraph"),
-      bandwidth: getEls("bandwidthGraph"),
-      buffer: getEls("bufferGraph"),
-      ingest: getEls("ingestGraph")
-    };
-    const metricEls = {
-      speed: getEls("speedValue"),
-      speedInstant: getEls("speedInstant"),
-      latency: getEls("latencyValue"),
-      bandwidth: getEls("bandwidthValue"),
-      buffer: getEls("bufferValue"),
-      ingest: getEls("ingestValue"),
-      playback: getEls("playbackValue"),
-      stallCount: getEls("stallValue"),
-      stallDuration: getEls("stallDuration"),
-      quality: getEls("qualityValue"),
-      codec: getEls("codecValue"),
-      dropped: getEls("droppedValue"),
-      errorNetwork: getEls("errorNetwork"),
-      errorMedia: getEls("errorMedia"),
-      errorOther: getEls("errorOther")
-    };
-    const allCanvases = Object.values(sparklineCanvases).flat().filter(Boolean);
-    const timeDiffValueEl = document.getElementById("timeDiffValue");
-    const timeDiffDetailEl = document.getElementById("timeDiffDetail");
-    const controlSets = videos.map((_,index)=>{
-      const playbar=document.querySelector(`.playbar[data-player="${index}"]`);
-      return {
-        playbar,
-        playButton: playbar?.querySelector('.play-toggle') || null,
-        timeline: playbar?.querySelector('.timeline') || null,
-        current: playbar?.querySelector('.time-current') || null,
-        total: playbar?.querySelector('.time-total') || null,
-        fullscreen: playbar?.querySelector('.fullscreen-toggle') || null
-      };
-    });
-    const timelineActive = controlSets.map(()=>false);
-    const TIMELINE_BASE_BG='rgba(244,244,244,0.16)';
-    const SPEED_AVG_WINDOW_MS = 60000;
-    const ZOOM_MIN = 1;
-    const ZOOM_MAX = 50;
-    const EXR_FORMAT_RGBA = 1023;
-    const EXR_FORMAT_RED = 1028;
-    const IMAGE_EXTENSIONS = new Set(['.png','.jpg','.jpeg','.webp','.gif','.bmp','.svg','.avif']);
-    const EXR_EXTENSIONS = new Set(['.exr']);
-    const VIDEO_EXTENSIONS = new Set(['.mp4','.webm','.mov','.m4v','.mkv','.avi','.ts','.m3u8']);
-    const HLS_DEFAULT_CONFIG = {
-      enableWorker: true,
-      lowLatencyMode: true,
-      backBufferLength: 30,
-      maxBufferLength: 45,
-      maxMaxBufferLength: 90,
-      maxBufferSize: 120 * 1000 * 1000,
-      startFragPrefetch: true,
-      manifestLoadingMaxRetry: 4,
-      levelLoadingMaxRetry: 4,
-      fragLoadingMaxRetry: 4,
-      fragLoadingRetryDelay: 750,
-      fragLoadingMaxRetryTimeout: 10000
-    };
-    const CAPTURE_CANVAS = document.createElement('canvas');
-    const CAPTURE_CTX = CAPTURE_CANVAS.getContext('2d');
-
-    const getActivePlayerIndices = ()=>PLAYER_IDS.map((_,index)=>index).filter(index=>index<activePlayerCount);
-    const isPlayerActive = index => Number.isInteger(index) && index>=0 && index<activePlayerCount;
-
-    function applyModeState(layoutId){
-      const layout = getLayoutConfig(layoutId);
-      activeLayoutId = Object.prototype.hasOwnProperty.call(LAYOUTS, layoutId) ? layoutId : DEFAULT_LAYOUT_ID;
-      activePlayerCount = layout.playerCount;
-      if(gridEl){
-        gridEl.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
-        gridEl.style.gridTemplateRows = `repeat(${layout.rows}, minmax(0, 1fr))`;
-        gridEl.dataset.layout = activeLayoutId;
-      }
-      if(compareLayoutSelect && compareLayoutSelect.value !== activeLayoutId){
-        compareLayoutSelect.value = activeLayoutId;
-      }
-      videoColumns.forEach((col,index)=>{
-        if(!col) return;
-        col.style.display = isPlayerActive(index) ? 'flex' : 'none';
-      });
-      playlistEditButtons.forEach(btn=>{
-        const player=parseInt(btn.dataset.player,10);
-        if(!Number.isInteger(player)) return;
-        btn.style.display=isPlayerActive(player)?'':'none';
-      });
-      controlSets.forEach((controls,index)=>{
-        if(!controls || !controls.playbar) return;
-        controls.playbar.style.display=isPlayerActive(index)?'':'none';
-      });
-      PLAYER_IDS.forEach((_,index)=>{
-        if(isPlayerActive(index)) return;
-        const v=videos[index];
-        if(v && !v.paused) v.pause();
-      });
-      getActivePlayerIndices().forEach(index=>updateTimelineForPlayer(index,true));
-      updatePlayButtons();
-      hideSyncedCursor();
-      refreshPlaylistOverlay();
-    }
-
-
-    let zoom=2;
-    let zoomedIn=false;
-    let cropState=0; // 0:none, 1:left, 2:right
-    let monitorVisible=false;
-    let cursorSyncEnabled=true;
-    const playlistPairs=[];
-    let playlistIdCounter=0;
-    let currentPlaylistIndex=null;
-    let currentPlaylistId=null;
-
-
-    const metrics = videos.map(()=>({
-      speedHistory:[],
-      speedWindow:[],
-      latencyHistory:[],
-      bandwidthHistory:[],
-      bufferHistory:[],
-      ingestHistory:[],
-      pendingFragments:[],
-      lastSpeed:null,
-      avgSpeed:null,
-      lastLatency:null,
-      lastBandwidth:null,
-      lastBuffer:null,
-      lastIngestLatency:null,
-      lastBitrate:null,
-      lastResolution:'-',
-      lastCodec:'-',
-      dropped:0,
-      total:0,
-      stallCount:0,
-      stallDuration:0,
-      stallStart:null,
-      errors:{network:0, media:0, other:0},
-      playbackRate:1,
-      lastDebug:null
-    }));
-
-    window.__monitorMetrics = metrics;
-
-
-    metrics.forEach((_,i)=>updateMonitorUI(i));
-
-
-    syncCanvasResolution();
-    if(monitorCloseButton) monitorCloseButton.addEventListener('click',()=>toggleMonitor(false));
-    window.addEventListener('resize', ()=>{
-      syncCanvasResolution();
-      metrics.forEach((_,i)=>updateMonitorUI(i));
-    });
-
-
-    videos.forEach((video,index)=>{
-      initVideoMonitoring(video,index);
-      video.addEventListener('play',updatePlayButtons);
-      video.addEventListener('pause',updatePlayButtons);
-      video.addEventListener('timeupdate',()=>updateTimelineForPlayer(index));
-      video.addEventListener('seeking',()=>updateTimelineForPlayer(index,true));
-    });
-
-    controlSets.forEach((controls,index)=>{
-      const {playButton,timeline,fullscreen}=controls;
-      if(playButton) playButton.addEventListener('click',()=>togglePlay(index));
-      if(fullscreen) fullscreen.addEventListener('click',()=>toggleFullscreen(boxes[index]));
-      if(timeline){
-        timeline.addEventListener('input',()=>{
-          const percent=Number(timeline.value)/100;
-          if(Number.isFinite(percent)) seekToPercent(percent,index);
-        });
-        const startDrag=()=>{ timelineActive[index]=true; };
-        const endDrag=()=>{
-          if(timelineActive[index]){
-            timelineActive[index]=false;
-            updateTimelineForPlayer(index,true);
-          }
-        };
-        ['pointerdown','mousedown','touchstart'].forEach(evt=>timeline.addEventListener(evt,startDrag));
-        ['pointerup','mouseup','touchend','touchcancel','mouseleave'].forEach(evt=>timeline.addEventListener(evt,endDrag));
-        timeline.addEventListener('blur',endDrag);
-      }
-    });
-
-    updatePlayButtons();
-    updateTimelineUI(true);
-    initializePlaylistSystem();
-    if(compareLayoutSelect){
-      compareLayoutSelect.addEventListener('change',()=>{
-        applyModeState(compareLayoutSelect.value);
-      });
-    }
-    if(captureStillButton){
-      captureStillButton.addEventListener('click',()=>captureAllVisibleVideoStills());
-    }
-    applyModeState(DEFAULT_LAYOUT_ID);
-
-
-    boxes.forEach((box,i)=>{
-      const video=videos[i],label=labels[i];
-      const dropZone=box.querySelector(".drop-zone");
-      const fileInput=box.querySelector('input[type=file]');
-      const urlInput=box.querySelector(".url-input");
-
-
-      dropZone.addEventListener("click",()=>fileInput.click());
-      fileInput.addEventListener("change",e=>handleFile(e.target.files[0],video,label,box,i));
-
-
-      urlInput.addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-          const url=e.target.value.trim();
-          if(url) handleURL(url,video,label,box,i);
-        }
-      });
-
-
-      box.addEventListener("dragover",e=>e.preventDefault());
-      box.addEventListener("drop",e=>{
-        e.preventDefault();
-        const dt=e.dataTransfer;
-        if(dt.files.length>0) handleFile(dt.files[0],video,label,box,i);
-        else{
-          const url=dt.getData("text")||dt.getData("text/plain");
-          if(url) handleURL(url.trim(),video,label,box,i);
-        }
-      });
-
-
-      box.addEventListener("mousemove",e=>{
-        handleZoomMove(e,box);
-        updateSyncedCursor(i,e);
-      });
-      box.addEventListener("mouseenter",e=>updateSyncedCursor(i,e));
-      box.addEventListener("mouseleave",e=>{
-        const next=e.relatedTarget;
-        const movingToOther=boxes.some((candidate,idx)=>idx!==i && candidate && next && candidate.contains(next));
-        if(!movingToOther) hideSyncedCursor();
-      });
-      box.addEventListener("wheel",e=>{
-        if(!box.classList.contains("loaded"))return;
-        e.preventDefault();
-        zoom+=e.deltaY*-0.01;
-        zoom=Math.min(Math.max(zoom,ZOOM_MIN),ZOOM_MAX);
-        updateTransforms();
-      });
-      box.addEventListener("click",()=>{
-        if(!box.classList.contains("loaded"))return;
-        zoomedIn=!zoomedIn;
-        boxes.forEach(b=>b.style.cursor=zoomedIn?"zoom-out":"zoom-in");
-        updateTransforms();
-      });
-    });
-
-    function initializePlaylistSystem(){
-      bulkModals.forEach(initBulkModal);
-      multiAddButtons.forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          const player=parseInt(btn.dataset.player,10);
-          openBulkModal(player);
-        });
-      });
-      if(playlistToggle) playlistToggle.setAttribute('aria-pressed','false');
-      if(playlistToggle && playlistOverlay){
-        playlistToggle.addEventListener('click',()=>{
-          const willShow=!playlistOverlay.classList.contains('visible');
-          playlistOverlay.classList.toggle('visible',willShow);
-          playlistOverlay.setAttribute('aria-hidden',willShow?'false':'true');
-          playlistToggle.classList.toggle('active',willShow);
-          playlistToggle.setAttribute('aria-pressed',willShow?'true':'false');
-          if(willShow) refreshPlaylistOverlay();
-        });
-      }
-      if(playlistClose){
-        playlistClose.addEventListener('click',hidePlaylistOverlay);
-      }
-      if(playlistOverlay){
-        playlistOverlay.addEventListener('click',e=>{
-          if(e.target===playlistOverlay) hidePlaylistOverlay();
-        });
-      }
-      document.addEventListener('keydown',e=>{
-        if(e.key==='Escape' && playlistOverlay && playlistOverlay.classList.contains('visible')) hidePlaylistOverlay();
-      });
-      playlistEditButtons.forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          const player=parseInt(btn.dataset.player,10);
-          openBulkModal(player);
-        });
-      });
-      if(playlistBody){
-        playlistBody.addEventListener('click',handlePlaylistBodyClick);
-      }
-      setupPlaylistDragging();
-      refreshPlaylistOverlay();
-    }
-
-    function hidePlaylistOverlay(){
-      if(!playlistOverlay) return;
-      playlistOverlay.classList.remove('visible');
-      playlistOverlay.setAttribute('aria-hidden','true');
-      if(playlistToggle){
-        playlistToggle.classList.remove('active');
-        playlistToggle.setAttribute('aria-pressed','false');
-      }
-    }
-
-    function handlePlaylistBodyClick(event){
-      const deleteBtn=event.target.closest('.playlist-delete');
-      if(deleteBtn){
-        const index=parseInt(deleteBtn.dataset.index,10);
-        if(Number.isInteger(index)) removePlaylistRow(index);
-        return;
-      }
-      const editBtn=event.target.closest('.playlist-cell button');
-      if(editBtn){
-        const player=parseInt(editBtn.dataset.player,10);
-        const focusIndex=parseInt(editBtn.dataset.index,10);
-        if(Number.isInteger(player)) openBulkModal(player,{focusIndex:Number.isInteger(focusIndex)?focusIndex:null});
-      }
-    }
-
-    function setupPlaylistDragging(){
-      if(!playlistBody) return;
-      let dragIndex=null;
-      playlistBody.addEventListener('dragstart',e=>{
-        const row=e.target.closest('.playlist-row');
-        if(!row) return;
-        dragIndex=parseInt(row.dataset.index,10);
-        if(!Number.isInteger(dragIndex)){
-          dragIndex=null;
-          return;
-        }
-        e.dataTransfer.effectAllowed='move';
-        row.classList.add('dragging');
-      });
-      playlistBody.addEventListener('dragend',()=>{
-        dragIndex=null;
-        playlistBody.querySelectorAll('.playlist-row').forEach(r=>r.classList.remove('dragging','dragover'));
-      });
-      playlistBody.addEventListener('dragover',e=>{
-        if(dragIndex===null) return;
-        const row=e.target.closest('.playlist-row');
-        if(!row) return;
-        e.preventDefault();
-        playlistBody.querySelectorAll('.playlist-row').forEach(r=>{ if(r!==row) r.classList.remove('dragover'); });
-        row.classList.add('dragover');
-      });
-      playlistBody.addEventListener('dragleave',e=>{
-        const row=e.target.closest('.playlist-row');
-        if(row) row.classList.remove('dragover');
-      });
-      playlistBody.addEventListener('drop',e=>{
-        if(dragIndex===null) return;
-        e.preventDefault();
-        const row=e.target.closest('.playlist-row');
-        playlistBody.querySelectorAll('.playlist-row').forEach(r=>r.classList.remove('dragover'));
-        if(!row) return;
-        const targetIndex=parseInt(row.dataset.index,10);
-        if(Number.isInteger(targetIndex) && targetIndex!==dragIndex){
-          reorderPlaylistPairs(dragIndex,targetIndex);
-        }
-        dragIndex=null;
-      });
-    }
-
-    function reorderPlaylistPairs(from,to){
-      if(from<0||to<0||from>=playlistPairs.length||to>=playlistPairs.length||from===to) return;
-      const [pair]=playlistPairs.splice(from,1);
-      playlistPairs.splice(to,0,pair);
-      updateCurrentPlaylistIndexFromId();
-      refreshPlaylistOverlay();
-    }
-
-    function removePlaylistRow(index){
-      if(index<0||index>=playlistPairs.length) return;
-      const [removed]=playlistPairs.splice(index,1);
-      trimTrailingEmptyPairs();
-      const length=getMaxPlaylistLength();
-      if(removed && removed.id===currentPlaylistId){
-        currentPlaylistId=null;
-        currentPlaylistIndex=null;
-        if(length>0){
-          const next=Math.min(index,length-1);
-          loadPlaylistIndex(next,{autoplay:true,force:true});
-        }else{
-          refreshPlaylistOverlay();
-        }
-      }else{
-        updateCurrentPlaylistIndexFromId();
-        refreshPlaylistOverlay();
-      }
-    }
-
-    function getMaxPlaylistLength(){
-      return playlistPairs.length;
-    }
-
-    function setPlaylistForPlayer(playerIndex,items){
-      const cleaned=items.map(clonePlaylistItem).filter(Boolean);
-      const maxLength=Math.max(cleaned.length,playlistPairs.length);
-      for(let i=0;i<maxLength;i++){
-        let pair=playlistPairs[i];
-        if(!pair){
-          pair={id:playlistIdCounter++,sources:Array(videos.length).fill(null)};
-          playlistPairs[i]=pair;
-        }
-        pair.sources[playerIndex]=cleaned[i]||null;
-      }
-      for(let i=cleaned.length;i<playlistPairs.length;i++){
-        if(playlistPairs[i]) playlistPairs[i].sources[playerIndex]=playlistPairs[i].sources[playerIndex]||null;
-      }
-      trimTrailingEmptyPairs();
-      if(cleaned.length>0){
-        loadPlaylistIndex(0,{autoplay:true,force:true});
-      }else{
-        if(getMaxPlaylistLength()===0){
-          currentPlaylistId=null;
-          currentPlaylistIndex=null;
-        }else{
-          updateCurrentPlaylistIndexFromId();
-        }
-        refreshPlaylistOverlay();
-      }
-    }
-
-    function trimTrailingEmptyPairs(){
-      while(playlistPairs.length && playlistPairs[playlistPairs.length-1].sources.every(src=>!src)){
-        playlistPairs.pop();
-      }
-    }
-
-    function refreshPlaylistOverlay(){
-      if(!playlistBody) return;
-      playlistBody.innerHTML='';
-      const length=getMaxPlaylistLength();
-      if(length===0){
-        const empty=document.createElement('div');
-        empty.className='playlist-empty';
-        empty.textContent='Playlist is empty. Add items to create a list.';
-        playlistBody.appendChild(empty);
-      }else{
-        const activeIndices=getActivePlayerIndices();
-        playlistPairs.forEach((pair,index)=>{
-          const row=document.createElement('div');
-          row.className='playlist-row';
-          row.style.setProperty('--playlist-player-count',String(activeIndices.length));
-          row.dataset.index=index;
-          row.setAttribute('draggable','true');
-          if(pair.id===currentPlaylistId) row.classList.add('active');
-          const indexTag=document.createElement('div');
-          indexTag.className='playlist-index-tag';
-          indexTag.textContent=`#${index+1}`;
-          row.appendChild(indexTag);
-          activeIndices.forEach(player=>{
-            const item=pair.sources[player];
-            const cell=document.createElement('div');
-            cell.className='playlist-cell';
-            if(!item){
-              cell.classList.add('empty');
-              const label=document.createElement('span');
-              label.className='playlist-label';
-              label.textContent=`P${player+1}`;
-              const name=document.createElement('span');
-              name.className='playlist-name';
-              name.textContent='Empty';
-              cell.appendChild(label);
-              cell.appendChild(name);
-            }else{
-              const label=document.createElement('span');
-              label.className='playlist-label';
-              label.textContent=`P${player+1}`;
-              const name=document.createElement('span');
-              name.className='playlist-name';
-              name.textContent=item.name||item.url||'';
-              const type=document.createElement('span');
-              type.className='playlist-type';
-              type.textContent=item.type==='file'?'📁 File':'🔗 URL';
-              cell.appendChild(label);
-              cell.appendChild(name);
-              cell.appendChild(type);
-            }
-            const edit=document.createElement('button');
-            edit.type='button';
-            edit.textContent='Edit';
-            edit.dataset.player=player;
-            edit.dataset.index=index;
-            cell.appendChild(edit);
-            row.appendChild(cell);
-          });
-          const del=document.createElement('button');
-          del.className='playlist-delete';
-          del.type='button';
-          del.dataset.index=index;
-          del.textContent='Delete';
-          row.appendChild(del);
-          playlistBody.appendChild(row);
-        });
-      }
-      if(playlistOverlay){
-        playlistOverlay.setAttribute('aria-hidden',playlistOverlay.classList.contains('visible')?'false':'true');
-      }
-      if(playlistToggle){
-        playlistToggle.classList.toggle('has-items',getMaxPlaylistLength()>0);
-      }
-    }
-
-    function updateCurrentPlaylistIndexFromId(){
-      if(currentPlaylistId===null){
-        currentPlaylistIndex=null;
-        return;
-      }
-      const idx=playlistPairs.findIndex(pair=>pair && pair.id===currentPlaylistId);
-      currentPlaylistIndex=idx>=0?idx:null;
-      if(idx<0) currentPlaylistId=null;
-    }
-
-    function openBulkModal(playerIndex,{focusIndex=null}={}){
-      if(!isPlayerActive(playerIndex)) return;
-      const modal=bulkModals.find(m=>parseInt(m.dataset.player,10)===playerIndex);
-      if(!modal) return;
-      if(playlistOverlay && playlistOverlay.classList.contains('visible')) hidePlaylistOverlay();
-      const items=playlistPairs.map(pair=>pair?.sources?.[playerIndex]).filter(item=>item);
-      populateBulkModal(modal,items);
-      modal.classList.add('visible');
-      modal.setAttribute('aria-hidden','false');
-      modal.dataset.focusIndex = Number.isInteger(focusIndex)?String(focusIndex):'';
-      if(Number.isInteger(focusIndex)){
-        requestAnimationFrame(()=>{
-          const rows=modal.querySelectorAll('.bulk-row');
-          const target=rows[focusIndex];
-          if(target){
-            target.classList.add('highlight');
-            target.scrollIntoView({block:'center'});
-            setTimeout(()=>target.classList.remove('highlight'),1200);
-          }
-        });
-      }
-    }
-
-    function closeBulkModal(modal){
-      modal.classList.remove('visible');
-      modal.setAttribute('aria-hidden','true');
-      modal._state.activeRow=null;
-    }
-
-    function initBulkModal(modal){
-      const playerIndex=parseInt(modal.dataset.player,10);
-      const rowsContainer=modal.querySelector('.bulk-rows');
-      const dropZone=modal.querySelector('.bulk-drop');
-      const addRowBtn=modal.querySelector('.bulk-add-row');
-      const applyBtn=modal.querySelector('.bulk-apply');
-      const closeBtn=modal.querySelector('.bulk-close');
-      const fileInput=modal.querySelector('.bulk-file-input');
-      modal._state={playerIndex,rowsContainer,fileInput,activeRow:null};
-
-      dropZone.addEventListener('click',()=>{
-        modal._state.activeRow=null;
-        fileInput.value='';
-        fileInput.click();
-      });
-      ['dragenter','dragover'].forEach(evt=>dropZone.addEventListener(evt,e=>{
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-      }));
-      ['dragleave','dragend'].forEach(evt=>dropZone.addEventListener(evt,()=>dropZone.classList.remove('dragover')));
-      dropZone.addEventListener('drop',e=>{
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const files=Array.from(e.dataTransfer.files||[]);
-        if(files.length) placeFilesIntoRows(modal,files);
-      });
-
-      addRowBtn.addEventListener('click',()=>createBulkRow(modal,{type:'file'}));
-
-      applyBtn.addEventListener('click',()=>{
-        const items=collectBulkItems(modal);
-        setPlaylistForPlayer(playerIndex,items);
-        closeBulkModal(modal);
-      });
-
-      closeBtn.addEventListener('click',()=>closeBulkModal(modal));
-
-      modal.addEventListener('keydown',e=>{
-        if(e.key==='Escape') closeBulkModal(modal);
-      });
-
-      fileInput.addEventListener('change',e=>{
-        const files=Array.from(e.target.files||[]);
-        if(!files.length) return;
-        if(modal._state.activeRow){
-          assignFileToRow(modal._state.activeRow,files[0]);
-          placeFilesIntoRows(modal,files.slice(1));
-        }else{
-          placeFilesIntoRows(modal,files);
-        }
-        modal._state.activeRow=null;
-        fileInput.value='';
-      });
-
-      populateBulkModal(modal,[]);
-    }
-
-    function populateBulkModal(modal,items){
-      const {rowsContainer}=modal._state;
-      rowsContainer.innerHTML='';
-      const list=items.length?items:[{type:'file'}];
-      list.forEach(item=>createBulkRow(modal,item));
-    }
-
-    function createBulkRow(modal,data={}){
-      const {rowsContainer,fileInput}=modal._state;
-      const row=document.createElement('div');
-      row.className='bulk-row';
-      const initialType=data.type==='url'?'url':'file';
-      row.dataset.type=initialType;
-
-      const typeSelect=document.createElement('select');
-      typeSelect.className='bulk-type';
-      typeSelect.innerHTML='<option value="file">File</option><option value="url">URL</option>';
-      typeSelect.value=initialType;
-
-      const content=document.createElement('div');
-      content.style.display='flex';
-      content.style.flexDirection='column';
-      content.style.gap='6px';
-
-      const fileWrapper=document.createElement('div');
-      fileWrapper.style.display='flex';
-      fileWrapper.style.flexDirection='column';
-      fileWrapper.style.gap='6px';
-
-      const fileButton=document.createElement('button');
-      fileButton.type='button';
-      fileButton.className='bulk-file-btn';
-      fileButton.textContent='Choose file';
-      const fileName=document.createElement('span');
-      fileName.className='bulk-file-name';
-      fileName.textContent=data.file?.name || data.name || 'No file selected';
-      fileName.style.fontSize='11px';
-      fileName.style.color='#9ecbf5';
-      fileWrapper.appendChild(fileButton);
-      fileWrapper.appendChild(fileName);
-
-      const urlInput=document.createElement('input');
-      urlInput.type='text';
-      urlInput.placeholder='Enter URL';
-      urlInput.className='bulk-url-input';
-      if(data.type==='url' && data.url) urlInput.value=data.url;
-
-      content.appendChild(fileWrapper);
-      content.appendChild(urlInput);
-
-      const removeBtn=document.createElement('button');
-      removeBtn.type='button';
-      removeBtn.className='bulk-remove';
-      removeBtn.textContent='×';
-
-      row.appendChild(typeSelect);
-      row.appendChild(content);
-      row.appendChild(removeBtn);
-
-      rowsContainer.appendChild(row);
-
-      function updateType(type){
-        row.dataset.type=type;
-        if(type==='file'){
-          fileWrapper.style.display='flex';
-          urlInput.style.display='none';
-        }else{
-          urlInput.style.display='block';
-          fileWrapper.style.display='none';
-        }
-      }
-
-      typeSelect.addEventListener('change',()=>{
-        const type=typeSelect.value;
-        if(type==='url') assignFileToRow(row,null);
-        updateType(type);
-      });
-
-      fileButton.addEventListener('click',()=>{
-        modal._state.activeRow=row;
-        fileInput.value='';
-        fileInput.click();
-      });
-
-      removeBtn.addEventListener('click',()=>{
-        rowsContainer.removeChild(row);
-        if(!rowsContainer.children.length) createBulkRow(modal,{type:'file'});
-      });
-
-      row._file=null;
-      if(initialType==='file' && data.file){
-        assignFileToRow(row,data.file);
-      }
-      updateType(initialType);
-      return row;
-    }
-
-    function assignFileToRow(row,file){
-      row._file=file||null;
-      const nameEl=row.querySelector('.bulk-file-name');
-      if(nameEl) nameEl.textContent=file?file.name:'No file selected';
-    }
-
-    function collectBulkItems(modal){
-      const {rowsContainer}=modal._state;
-      const items=[];
-      rowsContainer.querySelectorAll('.bulk-row').forEach(row=>{
-        const type=row.dataset.type;
-        if(type==='file'){
-          if(row._file) items.push({type:'file',file:row._file,name:row._file.name});
-        }else if(type==='url'){
-          const input=row.querySelector('.bulk-url-input');
-          const value=input?input.value.trim():'';
-          if(value) items.push({type:'url',url:value,name:value});
-        }
-      });
-      return items;
-    }
-
-    function placeFilesIntoRows(modal,files){
-      if(!files.length) return;
-      const pending=[...files];
-      const pool=Array.from(modal._state.rowsContainer.querySelectorAll('.bulk-row'));
-      pending.forEach(file=>{
-        let target=pool.find(row=>row.dataset.type==='file' && !row._file);
-        if(!target){
-          target=createBulkRow(modal,{type:'file'});
-          pool.push(target);
-        }
-        assignFileToRow(target,file);
-      });
-    }
-
-    function clonePlaylistItem(item){
-      if(!item) return null;
-      if(item.type==='file' && item.file){
-        return {type:'file',file:item.file,name:item.name||item.file.name};
-      }
-      if(item.type==='url' && item.url){
-        return {type:'url',url:item.url,name:item.name||item.url};
-      }
-      return null;
-    }
-
-    function loadPlaylistIndex(index,{autoplay=true,force=false}={}){
-      if(index<0||index>=playlistPairs.length) return;
-      const pair=playlistPairs[index];
-      if(!pair) return;
-      let loaded=false;
-      const resumeTimes=videos.map(video=>{
-        if(!video) return 0;
-        const t=Number.isFinite(video.currentTime)?video.currentTime:0;
-        return Number.isFinite(t)?t:0;
-      });
-      const wasPlaying=videos.map(video=>!!(video && !video.paused && !video.ended));
-      pair.sources.forEach((item,player)=>{
-        if(!isPlayerActive(player)) return;
-        if(!item) return;
-        const videoRef = videos[player];
-        const hadSource = hasVideoSource(videoRef);
-        const shouldPlay = autoplay ? (hadSource ? wasPlaying[player] : true) : autoplay;
-        const resumeTime = resumeTimes[player] || 0;
-        if(item.type==='file' && item.file){
-          handleFile(item.file,videoRef,labels[player],boxes[player],player,{fromPlaylist:true,autoplay:shouldPlay,resumeTime});
-        }else if(item.type==='url' && item.url){
-          handleURL(item.url,videoRef,labels[player],boxes[player],player,{fromPlaylist:true,autoplay:shouldPlay,resumeTime});
-        }
-        loaded=true;
-      });
-      currentPlaylistId=pair.id;
-      updateCurrentPlaylistIndexFromId();
-      if(loaded||force) refreshPlaylistOverlay();
-      if(loaded) updatePlayButtons();
-    }
-
-
-    function handleFile(file,video,label,box,index,{fromPlaylist=false,autoplay=true,resumeTime=null}={}){
-      const mediaKind=inferMediaKindFromFile(file);
-      if(!mediaKind){
-        const fileName=file?.name||'Unknown file';
-        const fileType=file?.type||'(no type)';
-        alert(`Unsupported file type.\nFile: ${fileName}\nMIME: ${fileType}`);
-        return;
-      }
-      if(mediaKind==='exr'){
-        handleExrFile(file,label,box,index,{fromPlaylist}).catch(err=>{
-          console.error('EXR load failed',err);
-          alert(`EXR load failed: ${err.message||err}`);
-        });
-        return;
-      }
-      if(mediaKind==='image'){
-        const objectURL=URL.createObjectURL(file);
-        loadImageSource({url:objectURL,name:file.name,objectURL},label,box,index,{fromPlaylist});
-        return;
-      }
-      clearImageSource(index);
-      clearVideoSource(video);
-      resetMetricState(index);
-      const url=URL.createObjectURL(file);
-      video._objectURL=url;
-      video.src=url;
-      showVideo(index);
-      applyPlaybackOptimizations(video);
-      try{ video.load(); }catch(err){}
-      scheduleResume(video,{resumeTime,shouldPlay:autoplay});
-      label.textContent=file.name;
-      box.classList.add("loaded");
-      updateTimelineForPlayer(index,true);
-      updatePlayButtons();
-      if(!fromPlaylist){
-        currentPlaylistId=null;
-        currentPlaylistIndex=null;
-        refreshPlaylistOverlay();
-      }
-    }
-
-
-    function handleURL(
-      url,
-      video,
-      label,
-      box,
-      index,
-      { fromPlaylist = false, autoplay = true, resumeTime = null } = {}
-    ) {
-      const mediaKind=inferMediaKindFromUrl(url);
-      if(mediaKind==='exr'){
-        handleExrUrl(url,label,box,index,{fromPlaylist}).catch(err=>{
-          console.error('EXR URL load failed',err);
-          alert(`EXR URL load failed: ${err.message||err}`);
-        });
-        return;
-      }
-      if(mediaKind==='image'){
-        loadImageSource({url,name:url},label,box,index,{fromPlaylist});
-        return;
-      }
-      clearImageSource(index);
-      clearVideoSource(video);
-
-      label.textContent = url;
-      box.classList.add("loaded");
-      resetMetricState(index);
-
-      // HLS handling
-      if (mediaKind==='hls' || url.endsWith(".m3u8")) {
-        if (Hls.isSupported()) {
-          const hls = new Hls(HLS_DEFAULT_CONFIG);
-          attachHlsListeners(hls, index);
-          hls.loadSource(url);
-          hls.attachMedia(video);
-          showVideo(index);
-          applyPlaybackOptimizations(video);
-          scheduleResume(video, { resumeTime, shouldPlay: autoplay });
-          video._hls = hls;
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = url;
-          showVideo(index);
-          applyPlaybackOptimizations(video);
-          try{ video.load(); }catch(err){}
-          scheduleResume(video, { resumeTime, shouldPlay: autoplay });
-        } else {
-          alert("This browser does not support HLS playback.");
-        }
-      }
-      // Standard MP4/WebM handling
-      else {
-        video.src = url;
-        showVideo(index);
-        applyPlaybackOptimizations(video);
-        try{ video.load(); }catch(err){}
-        scheduleResume(video, { resumeTime, shouldPlay: autoplay });
-      }
-
-      updateTimelineForPlayer(index, true);
-      updatePlayButtons();
-
-      if (!fromPlaylist) {
-        currentPlaylistId = null;
-        currentPlaylistIndex = null;
-        refreshPlaylistOverlay();
-      }
-    }
-
-
-
-
-    function destroyHls(video){
-      if(video._hls){
-        try{ video._hls.destroy(); }catch(err){ console.warn('Hls destroy error', err); }
-        video._hls=null;
-      }
-      if(video._pendingResumeHandler){
-        video.removeEventListener('loadedmetadata',video._pendingResumeHandler);
-        video._pendingResumeHandler=null;
-      }
-    }
-
-
-    function handleZoomMove(e,box){
-      if(cropState!==0) return;
-      const rect=box.getBoundingClientRect();
-      const xPercent=((e.clientX-rect.left)/rect.width)*100;
-      const yPercent=((e.clientY-rect.top)/rect.height)*100;
-      getActivePlayerIndices().forEach(idx=>{
-        const v=videos[idx];
-        [v,images[idx]].filter(Boolean).forEach(el=>{
-          el.style.transformOrigin=`${xPercent}% ${yPercent}%`;
-        });
-      });
-    }
-
-
-    function updateTransforms(){
-      const baseScale = cropState===0 ? 1 : 2;
-      getActivePlayerIndices().forEach(idx=>{
-        const v=videos[idx];
-        [v,images[idx]].filter(Boolean).forEach(el=>{
-          if(cropState===1) el.style.transformOrigin="left center";
-          else if(cropState===2) el.style.transformOrigin="right center";
-          else if(!zoomedIn) el.style.transformOrigin="center center";
-          const totalScale = (zoomedIn ? zoom : 1) * baseScale;
-          el.style.transform=`scale(${totalScale})`;
-        });
-      });
-    }
-
-
-    document.addEventListener("keydown",e=>{
-      const active = document.activeElement;
-      const tag = active ? active.tagName : '';
-      const activeType = (active && active.type) ? String(active.type).toLowerCase() : '';
-      const isInputField = tag === 'INPUT';
-      const isTyping = (isInputField && !['range','button','checkbox','radio','submit'].includes(activeType)) || tag === 'TEXTAREA' || (active && active.isContentEditable);
-      const key = (e.key||'');
-      const lowerKey = key.toLowerCase();
-      const code = e.code || '';
-      if(e.key === 'Escape' && monitorVisible){
-        e.preventDefault();
-        toggleMonitor(false);
-        return;
-      }
-      if(code==="Space" && !isTyping){
-        e.preventDefault(); togglePlay();
-      } else if(!isTyping && (lowerKey==="r" || code==="KeyR")) syncAll();
-      else if(!isTyping && (lowerKey==="f" || code==="KeyF")) toggleFullscreen();
-      else if(!isTyping && (/^[0-9]$/.test(key) || /^Digit[0-9]$/.test(code))){
-        e.preventDefault();
-        const digit=/^[0-9]$/.test(key)?parseInt(key,10):parseInt(code.replace('Digit',''),10);
-        if(Number.isFinite(digit)) seekToPercent(digit/10);
-      }
-      else if(!isTyping && (lowerKey==="-" || key==="_" || code==="Minus")){
-        e.preventDefault();
-        jumpToLatestBuffered();
-      }
-      else if(!isTyping && (lowerKey==="arrowright"||lowerKey==="arrowleft"||code==="ArrowRight"||code==="ArrowLeft")){
-        const forward = lowerKey==="arrowright" || code==="ArrowRight";
-        stepFrames(e.shiftKey,forward);
-      }
-      else if(!isTyping && code==="Comma" && !e.shiftKey){
-        e.preventDefault();
-        toggleSyncedCursor();
-      }
-      else if(!isTyping && ((lowerKey===">"||lowerKey===".") || code==="Period")) adjustSpeed(0.1);
-      else if(!isTyping && ((lowerKey===","||lowerKey==="<") || code==="Comma")) adjustSpeed(-0.1);
-      else if(!isTyping && (lowerKey==="s" || code==="KeyS")) cycleCrop();
-      else if(!isTyping && !e.ctrlKey && !e.metaKey && !e.altKey && (lowerKey==="m" || code==="KeyM")){
-        e.preventDefault();
-        toggleMonitor();
-      }
-      else if(!isTyping && !e.ctrlKey && !e.metaKey && !e.altKey && (lowerKey==="c" || code==="KeyC")){
-        e.preventDefault();
-        captureAllVisibleVideoStills();
-      }
-    });
-
-
-    function hasVideoSource(video){
-      return !!(video && (video.currentSrc || video.src));
-    }
-
-    function toTwoDigits(value){
-      return String(value).padStart(2,'0');
-    }
-
-    function getCaptureTimestamp(date=new Date()){
-      const year = date.getFullYear();
-      const month = toTwoDigits(date.getMonth()+1);
-      const day = toTwoDigits(date.getDate());
-      const hour = toTwoDigits(date.getHours());
-      const minute = toTwoDigits(date.getMinutes());
-      const second = toTwoDigits(date.getSeconds());
-      return `${year}${month}${day}-${hour}${minute}${second}`;
-    }
-
-    function sanitizeFileName(name){
-      if(!name || typeof name!=='string') return 'capture';
-      return name
-        .replace(/[\\/:*?"<>|]/g,'_')
-        .replace(/[\u0000-\u001F]/g,'')
-        .replace(/\s+/g,' ')
-        .trim();
-    }
-
-    function extractBaseName(rawName){
-      if(!rawName || typeof rawName!=='string') return '';
-      let candidate = rawName.trim();
-      if(!candidate) return '';
-      try{
-        const parsed = new URL(candidate, window.location.href);
-        const pathname = parsed.pathname || '';
-        const lastSegment = pathname.split('/').filter(Boolean).pop();
-        if(lastSegment) candidate = decodeURIComponent(lastSegment);
-      }catch(err){}
-      const slashIndex = Math.max(candidate.lastIndexOf('/'), candidate.lastIndexOf('\\'));
-      if(slashIndex>=0) candidate = candidate.slice(slashIndex+1);
-      return candidate.replace(/\.[^.]+$/,'').trim();
-    }
-
-    function triggerDownloadFromDataUrl(dataUrl,fileName){
-      const a=document.createElement('a');
-      a.href=dataUrl;
-      a.download=fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
-
-    function captureStillForPlayer(index,timestamp){
-      if(!isPlayerActive(index)) return { saved:false, reason:'inactive' };
-      const video = videos[index];
-      if(!video || !hasVideoSource(video)) return { saved:false, reason:'no-source' };
-      if(video.readyState < 2) return { saved:false, reason:'not-ready' };
-      const frameWidth = video.videoWidth || 0;
-      const frameHeight = video.videoHeight || 0;
-      if(frameWidth <= 0 || frameHeight <= 0) return { saved:false, reason:'invalid-size' };
-      if(!CAPTURE_CTX) return { saved:false, reason:'canvas-unavailable' };
-
-      CAPTURE_CANVAS.width = frameWidth;
-      CAPTURE_CANVAS.height = frameHeight;
-      CAPTURE_CTX.clearRect(0,0,frameWidth,frameHeight);
-      CAPTURE_CTX.drawImage(video,0,0,frameWidth,frameHeight);
-
-      const labelText = labels[index]?.textContent || `player${index+1}`;
-      const baseName = sanitizeFileName(extractBaseName(labelText) || `player${index+1}`);
-      const fileName = `${baseName}_still_${timestamp}.png`;
-      try{
-        const dataUrl = CAPTURE_CANVAS.toDataURL('image/png');
-        triggerDownloadFromDataUrl(dataUrl,fileName);
-        return { saved:true, fileName };
-      }catch(err){
-        console.error('Capture failed',err);
-        return { saved:false, reason:'security-or-render' };
-      }
-    }
-
-    function captureAllVisibleVideoStills(){
-      const timestamp = getCaptureTimestamp();
-      const results = getActivePlayerIndices().map(index=>captureStillForPlayer(index,timestamp));
-      const saved = results.filter(item=>item.saved).length;
-      const failed = results.length - saved;
-      if(saved===0){
-        alert('No savable video frame found. Ensure videos are loaded and a frame is currently displayed.');
-      }else if(failed>0){
-        alert(`Saved ${saved} frame(s). ${failed} frame(s) failed (possible remote CORS restriction or frame not ready yet).`);
-      }
-    }
-
-    function hasImageSource(index){
-      const image=images[index];
-      return !!(image && image.src);
-    }
-
-    function hasSource(video){
-      if(!video) return false;
-      const index=videos.indexOf(video);
-      if(index>=0 && !isPlayerActive(index)) return false;
-      return hasVideoSource(video) || (index>=0 && hasImageSource(index));
-    }
-
-    function inferMediaKindFromFile(file){
-      if(!file) return null;
-      const mime=(file.type||'').toLowerCase();
-      if(mime.startsWith('image/')) return 'image';
-      if(mime.startsWith('video/')) return 'video';
-      const name=(file.name||'').toLowerCase();
-      const dot=name.lastIndexOf('.');
-      const ext=dot>=0?name.slice(dot):'';
-      if(EXR_EXTENSIONS.has(ext)) return 'exr';
-      if(IMAGE_EXTENSIONS.has(ext)) return 'image';
-      if(VIDEO_EXTENSIONS.has(ext)) return 'video';
-      return null;
-    }
-
-    function inferMediaKindFromUrl(url){
-      if(!url || typeof url!=='string') return null;
-      let pathname=url;
-      try{
-        pathname=new URL(url,window.location.href).pathname||url;
-      }catch(err){}
-      const lower=pathname.toLowerCase();
-      const dot=lower.lastIndexOf('.');
-      const ext=dot>=0?lower.slice(dot):'';
-      if(ext==='.m3u8') return 'hls';
-      if(EXR_EXTENSIONS.has(ext)) return 'exr';
-      if(IMAGE_EXTENSIONS.has(ext)) return 'image';
-      if(VIDEO_EXTENSIONS.has(ext)) return 'video';
-      return null;
-    }
-
-    function clearImageSource(index){
-      const image=images[index];
-      if(!image) return;
-      if(image._objectURL){
-        try{ URL.revokeObjectURL(image._objectURL); }catch(err){}
-        image._objectURL=null;
-      }
-      image.removeAttribute('src');
-      image.style.display='none';
-    }
-
-    function clearVideoSource(video){
-      if(!video) return;
-      destroyHls(video);
-      if(video._objectURL){
-        try{ URL.revokeObjectURL(video._objectURL); }catch(err){}
-        video._objectURL=null;
-      }
-      video.removeAttribute('src');
-      try{ video.load(); }catch(err){}
-      video.style.display='block';
-    }
-
-    function showVideo(index){
-      const video=videos[index];
-      const image=images[index];
-      if(video) video.style.display='block';
-      if(image) image.style.display='none';
-    }
-
-    function showImage(index){
-      const video=videos[index];
-      const image=images[index];
-      if(video) video.style.display='none';
-      if(image) image.style.display='block';
-    }
-
-    function loadImageSource(source,label,box,index,{fromPlaylist=false}={}){
-      const image=images[index];
-      const video=videos[index];
-      if(!image || !video) return;
-      clearVideoSource(video);
-      clearImageSource(index);
-      resetMetricState(index);
-      image.src=source.url;
-      image._objectURL=source.objectURL||null;
-      image.onload=()=>{ updateTransforms(); };
-      image.onerror=()=>{
-        console.error('Image load failed',source.name,source.url);
-        alert(`Image load failed: ${source.name}`);
-      };
-      showImage(index);
-      label.textContent=source.name;
-      box.classList.add("loaded");
-      updateTimelineForPlayer(index,true);
-      updatePlayButtons();
-      if(!fromPlaylist){
-        currentPlaylistId=null;
-        currentPlaylistIndex=null;
-        refreshPlaylistOverlay();
-      }
-    }
-
-    function decodeHalfFloat(binary){
-      const exponent=(binary & 0x7c00)>>10;
-      const fraction=binary & 0x03ff;
-      const sign=(binary>>15)?-1:1;
-      if(exponent===0){
-        return sign * 6.103515625e-5 * (fraction/0x400);
-      }
-      if(exponent===0x1f){
-        return fraction ? NaN : sign*Infinity;
-      }
-      return sign * Math.pow(2,exponent-15) * (1 + fraction/0x400);
-    }
-
-    function linearToSrgb8(linear){
-      const safe=Number.isFinite(linear)?Math.max(0,linear):0;
-      const gamma=Math.pow(safe,1/2.2);
-      return Math.min(255,Math.max(0,Math.round(gamma*255)));
-    }
-
-    function renderExrToObjectUrl(exrData){
-      const width=exrData.width||0;
-      const height=exrData.height||0;
-      if(!(width>0 && height>0)) throw new Error('Invalid EXR dimensions');
-      const channelCount=exrData.format===EXR_FORMAT_RED ? 1 : 4;
-      const data=exrData.data;
-      if(!data || !data.length) throw new Error('Empty EXR pixel data');
-      const pixels=width*height;
-      const sampleStep=Math.max(1,Math.floor(pixels/20000));
-      let sampledMax=1;
-      for(let i=0;i<pixels;i+=sampleStep){
-        const base=i*channelCount;
-        const get=(offset)=>{
-          const v=data[base+offset];
-          return data instanceof Uint16Array ? decodeHalfFloat(v) : v;
-        };
-        const r=get(0);
-        const g=channelCount===1?r:get(1);
-        const b=channelCount===1?r:get(2);
-        if(Number.isFinite(r) && r>sampledMax) sampledMax=r;
-        if(Number.isFinite(g) && g>sampledMax) sampledMax=g;
-        if(Number.isFinite(b) && b>sampledMax) sampledMax=b;
-      }
-      const scale=sampledMax>1 ? 1/sampledMax : 1;
-      const canvas=document.createElement('canvas');
-      canvas.width=width;
-      canvas.height=height;
-      const ctx=canvas.getContext('2d',{willReadFrequently:false});
-      if(!ctx) throw new Error('Failed to create canvas context');
-      const imageData=ctx.createImageData(width,height);
-      const out=imageData.data;
-      for(let i=0;i<pixels;i++){
-        const base=i*channelCount;
-        const outBase=i*4;
-        const get=(offset)=>{
-          const v=data[base+offset];
-          return data instanceof Uint16Array ? decodeHalfFloat(v) : v;
-        };
-        const r=get(0)*scale;
-        const g=(channelCount===1 ? r : get(1)*scale);
-        const b=(channelCount===1 ? r : get(2)*scale);
-        const a=(channelCount===1 ? 1 : get(3));
-        out[outBase]=linearToSrgb8(r);
-        out[outBase+1]=linearToSrgb8(g);
-        out[outBase+2]=linearToSrgb8(b);
-        out[outBase+3]=Math.min(255,Math.max(0,Math.round((Number.isFinite(a)?a:1)*255)));
-      }
-      ctx.putImageData(imageData,0,0);
-      return canvas.toDataURL('image/png');
-    }
-
-    async function loadExrFromArrayBuffer(buffer,name,label,box,index,{fromPlaylist=false}={}){
-      if(typeof window.parseExr!=='function'){
-        throw new Error('EXR parser not initialized');
-      }
-      const parsed=window.parseExr(buffer,window.EXRFloatType||1015);
-      const pngDataUrl=renderExrToObjectUrl(parsed);
-      loadImageSource({url:pngDataUrl,name},label,box,index,{fromPlaylist});
-    }
-
-    async function handleExrFile(file,label,box,index,{fromPlaylist=false}={}){
-      const buffer=await file.arrayBuffer();
-      await loadExrFromArrayBuffer(buffer,file.name,label,box,index,{fromPlaylist});
-    }
-
-    async function handleExrUrl(url,label,box,index,{fromPlaylist=false}={}){
-      const response=await fetch(url);
-      if(!response.ok) throw new Error(`EXR download failed (${response.status})`);
-      const buffer=await response.arrayBuffer();
-      await loadExrFromArrayBuffer(buffer,url,label,box,index,{fromPlaylist});
-    }
-
-    function setSyncedCursorPosition(cursor,xPercent,yPercent){
-      if(!cursor) return;
-      cursor.style.setProperty('--cursor-x',`${xPercent}%`);
-      cursor.style.setProperty('--cursor-y',`${yPercent}%`);
-      cursor.classList.add('visible');
-    }
-
-    function toggleSyncedCursor(forceState){
-      const nextState = typeof forceState === 'boolean' ? forceState : !cursorSyncEnabled;
-      cursorSyncEnabled = nextState;
-      if(!cursorSyncEnabled) hideSyncedCursor();
-    }
-
-    function hideSyncedCursor(){
-      syncedCursors.forEach(cursor=>{ if(cursor) cursor.classList.remove('visible'); });
-    }
-
-    function updateSyncedCursor(sourceIndex,event){
-      if(!cursorSyncEnabled){
-        hideSyncedCursor();
-        return;
-      }
-      if(!Number.isInteger(sourceIndex) || !event) return;
-      if(!isPlayerActive(sourceIndex)) return;
-      const sourceBox=boxes[sourceIndex];
-      if(!sourceBox) return;
-      const activeIndices=getActivePlayerIndices();
-      const loadedAllActive=activeIndices.every(idx=>boxes[idx] && boxes[idx].classList.contains("loaded"));
-      if(!loadedAllActive){
-        hideSyncedCursor();
-        return;
-      }
-      const rect=sourceBox.getBoundingClientRect();
-      if(!(rect.width>0 && rect.height>0)) return;
-      const xPercent=((event.clientX-rect.left)/rect.width)*100;
-      const yPercent=((event.clientY-rect.top)/rect.height)*100;
-      const clampedX=Math.min(Math.max(xPercent,0),100);
-      const clampedY=Math.min(Math.max(yPercent,0),100);
-      activeIndices.forEach(idx=>setSyncedCursorPosition(syncedCursors[idx],clampedX,clampedY));
-    }
-
-    function togglePlay(targetIndex){
-      const applyTargets = targetIndex===undefined
-        ? getActivePlayerIndices().map(index=>({video:videos[index],index}))
-        : [{video:videos[targetIndex],index:targetIndex}];
-      if(targetIndex!==undefined && !isPlayerActive(targetIndex)) return;
-      const validTargets = applyTargets.filter(({video})=>hasVideoSource(video));
-      if(!validTargets.length) return;
-
-      if(targetIndex===undefined){
-        const anyPlaying = validTargets.some(({video})=>!video.paused);
-        validTargets.forEach(({video})=>{
-          if(anyPlaying) video.pause();
-          else safePlay(video);
-        });
-      }else{
-        const video = validTargets[0].video;
-        if(video.paused) safePlay(video);
-        else video.pause();
-      }
-      updatePlayButtons();
-    }
-    function syncAll(){
-      const activeIndices=getActivePlayerIndices();
-      if(!activeIndices.length) return;
-      const masterIndex=activeIndices[0];
-      const master=videos[masterIndex];
-      const t=(master && Number.isFinite(master.currentTime)) ? master.currentTime : 0;
-      activeIndices.forEach(i=>{
-        if(i!==masterIndex && hasVideoSource(videos[i])) videos[i].currentTime=t;
-      });
-      updateTimelineUI(true);
-    }
-    function toggleFullscreen(target=document.documentElement){
-      if(!document.fullscreenElement) target.requestFullscreen();
-      else document.exitFullscreen();
-    }
-    function stepFrames(shift,forward){
-      const step=(shift?10:1)/30;
-      getActivePlayerIndices().forEach(index=>{
-        const v=videos[index];
-        if(!hasVideoSource(v)) return;
-        if(!v.paused) v.pause();
-        v.currentTime+=forward?step:-step;
-      });
-      updateTimelineUI(true);
-    }
-    function adjustSpeed(delta){
-      getActivePlayerIndices().forEach(i=>{
-        const v=videos[i];
-        if(!hasVideoSource(v)) return;
-        v.playbackRate=Math.min(Math.max(v.playbackRate+delta,0.1),4);
-        metrics[i].playbackRate=v.playbackRate;
-        updateMonitorUI(i);
-      });
-    }
-    function cycleCrop(){
-      cropState=(cropState+1)%3;
-      getActivePlayerIndices().forEach(idx=>{
-        const v=videos[idx];
-        [v,images[idx]].filter(Boolean).forEach(el=>{
-          if(cropState===0) el.style.objectFit="contain";
-          else el.style.objectFit="cover";
-        });
-      });
-      updateTransforms();
-    }
-
-
-    function updatePlayButtons(){
-      controlSets.forEach((controls,index)=>{
-        const button=controls.playButton;
-        if(!button) return;
-        if(!isPlayerActive(index)){
-          button.textContent='▶';
-          button.setAttribute('aria-pressed','false');
-          button.setAttribute('aria-label','Play');
-          return;
-        }
-        const playing=hasVideoSource(videos[index]) && !videos[index].paused;
-        button.textContent=playing?'⏸':'▶';
-        button.setAttribute('aria-pressed',playing?'true':'false');
-        button.setAttribute('aria-label',playing?'Pause':'Play');
-      });
-    }
-
-    function formatTimecode(seconds){
-      if(!Number.isFinite(seconds)) return "--:--";
-      const clamped=Math.max(0,seconds);
-      const hours=Math.floor(clamped/3600);
-      const minutes=Math.floor((clamped%3600)/60);
-      const secs=Math.floor(clamped%60);
-      const pad=v=>String(v).padStart(2,'0');
-      return hours>0?`${hours}:${pad(minutes)}:${pad(secs)}`:`${pad(minutes)}:${pad(secs)}`;
-    }
-
-    function getSeekRange(video){
-      if(video.seekable && video.seekable.length){
-        const lastIndex=video.seekable.length-1;
-        const start=video.seekable.start(0);
-        const end=video.seekable.end(lastIndex);
-        if(Number.isFinite(start) && Number.isFinite(end) && end>start) return {start,end};
-      }
-      if(Number.isFinite(video.duration) && video.duration>0 && video.duration!==Infinity){
-        return {start:0,end:video.duration};
-      }
-      return null;
-    }
-
-    function updateTimelineForPlayer(index,force=false){
-      const controls=controlSets[index];
-      if(!controls) return;
-      const timeline=controls.timeline;
-      const currentLabel=controls.current;
-      const totalLabel=controls.total;
-      const video=videos[index];
-      const range=getSeekRange(video);
-      if(!range){
-        if(timeline){
-          timeline.disabled=true;
-          if(!timelineActive[index] || force) timeline.value='0';
-          timeline.style.background=TIMELINE_BASE_BG;
-        }
-        if(currentLabel) currentLabel.textContent='--:--';
-        if(totalLabel) totalLabel.textContent='--:--';
-        return;
-      }
-      const span=range.end-range.start;
-      const rawCurrent=Number.isFinite(video.currentTime)?video.currentTime:range.start;
-      const clamped=Math.min(Math.max(rawCurrent,range.start),range.end);
-      const percent=span>0? (clamped-range.start)/span : 0;
-      const sliderValue=Math.round(percent*1000)/10;
-      if(timeline){
-        timeline.disabled=false;
-        if(!timelineActive[index] || force) timeline.value=sliderValue.toString();
-        updateTimelineBufferVisual(index,range);
-      }
-      if(currentLabel) currentLabel.textContent=formatTimecode(clamped-range.start);
-      if(totalLabel) totalLabel.textContent=formatTimecode(Math.max(span,0));
-    }
-
-    function updateTimelineUI(force=false){
-      getActivePlayerIndices().forEach(index=>updateTimelineForPlayer(index,force));
-    }
-
-    function updateTimelineBufferVisual(index,range){
-      const controls=controlSets[index];
-      if(!controls) return;
-      const timeline=controls.timeline;
-      if(!timeline) return;
-      const video=videos[index];
-      if(!video || !range){
-        timeline.style.background=TIMELINE_BASE_BG;
-        return;
-      }
-      const buffered=video.buffered;
-      if(!buffered || buffered.length===0){
-        timeline.style.background=TIMELINE_BASE_BG;
-        return;
-      }
-      const span=range.end-range.start;
-      if(!(span>0)){
-        timeline.style.background=TIMELINE_BASE_BG;
-        return;
-      }
-      const segments=[];
-      for(let i=0;i<buffered.length;i++){
-        let start;
-        let end;
-        try{
-          start=buffered.start(i);
-          end=buffered.end(i);
-        }catch(err){ continue; }
-        if(!Number.isFinite(start) || !Number.isFinite(end)) continue;
-        start=Math.max(start,range.start);
-        end=Math.min(end,range.end);
-        if(end>start){
-          const startPercent=((start-range.start)/span)*100;
-          const endPercent=((end-range.start)/span)*100;
-          segments.push({startPercent,endPercent});
-        }
-      }
-      if(!segments.length){
-        timeline.style.background=TIMELINE_BASE_BG;
-        return;
-      }
-      segments.sort((a,b)=>a.startPercent-b.startPercent);
-      const base=TIMELINE_BASE_BG;
-      const bufferColor='rgba(201,201,205,0.5)';
-      let current=0;
-      const parts=[];
-      segments.forEach(seg=>{
-        const start=Math.min(100,Math.max(0,seg.startPercent));
-        const end=Math.min(100,Math.max(0,seg.endPercent));
-        if(end<=current) return;
-        if(start>current){
-          parts.push(`${base} ${current}% ${start}%`);
-        }
-        const clampedStart=Math.max(current,start);
-        parts.push(`${bufferColor} ${clampedStart}% ${end}%`);
-        current=Math.max(current,end);
-      });
-      if(current<100){
-        parts.push(`${base} ${current}% 100%`);
-      }
-      timeline.style.background=`linear-gradient(to right, ${parts.join(', ')})`;
-    }
-
-    function seekToPercent(percent,targetIndex){
-      const clamped=Math.min(Math.max(percent,0),1);
-      const applyAll=targetIndex===undefined;
-      if(targetIndex!==undefined && !isPlayerActive(targetIndex)) return;
-      const apply=(video)=>{
-        const range=getSeekRange(video);
-        if(!range) return;
-        const span=range.end-range.start;
-        if(!(span>0)) return;
-        const target=range.start+span*clamped;
-        if(Number.isFinite(target)){
-          try{ video.currentTime=target; }catch(err){}
-        }
-      };
-      if(applyAll){
-        getActivePlayerIndices().forEach(index=>apply(videos[index]));
-      }else{
-        const video=videos[targetIndex];
-        if(video) apply(video);
-      }
-      updateTimelineUI(true);
-    }
-
-    function jumpToLatestBuffered(){
-      getActivePlayerIndices().forEach(index=>{
-        const video=videos[index];
-        let target=null;
-        if(video.buffered && video.buffered.length){
-          const last=video.buffered.length-1;
-          const end=video.buffered.end(last);
-          const start=video.buffered.start(last);
-          if(Number.isFinite(end)){
-            target=end-0.3;
-            if(!Number.isFinite(start) || target<start) target=start;
-          }
-        }
-        if(target===null){
-          const range=getSeekRange(video);
-          if(range){
-            target=range.end-0.3;
-            if(target<range.start) target=range.start;
-          }
-        }
-        if(target!==null && Number.isFinite(target)){
-          try{ video.currentTime=target; }catch(err){}
-        }
-      });
-      updateTimelineUI(true);
-    }
-
-
-    function toggleMonitor(forceState){
-      if(!monitorPanel) return;
-      const nextState = typeof forceState === 'boolean' ? forceState : !monitorVisible;
-      if(nextState === monitorVisible) return;
-      monitorVisible = nextState;
-      monitorPanel.classList.toggle('visible',monitorVisible);
-      monitorPanel.setAttribute('aria-hidden',monitorVisible?'false':'true');
-      if(monitorVisible){
-        syncCanvasResolution();
-        metrics.forEach((_,i)=>updateMonitorUI(i));
-      }
-    }
-
-    function applyPlaybackOptimizations(video){
-      if(!video) return;
-      video.preload='auto';
-      video.playsInline=true;
-      video.setAttribute('playsinline','');
-      video.disablePictureInPicture=true;
-      video.setAttribute('disablePictureInPicture','');
-      video.setAttribute('disableRemotePlayback','');
-      video.controlsList='nodownload noplaybackrate noremoteplayback';
-      video.loop=true;
-    }
-
-
-    function initVideoMonitoring(video,index){
-      applyPlaybackOptimizations(video);
-      video.addEventListener('loadedmetadata',()=>{
-        if(video.videoWidth&&video.videoHeight){
-          metrics[index].lastResolution=`${video.videoWidth}x${video.videoHeight}`;
-        }
-        metrics[index].playbackRate=video.playbackRate||1;
-        updateMonitorUI(index);
-        updateTimelineForPlayer(index,true);
-      });
-      video.addEventListener('durationchange',()=>updateTimelineForPlayer(index,true));
-      ['waiting','stalled'].forEach(evt=>{
-        video.addEventListener(evt,()=>{
-          const m=metrics[index];
-          if(!m.stallStart){
-            m.stallStart=performance.now();
-            m.stallCount+=1;
-            updateMonitorUI(index);
-          }
-        });
-      });
-      video.addEventListener('playing',()=>{
-        const m=metrics[index];
-        if(m.stallStart){
-          m.stallDuration+= (performance.now()-m.stallStart)/1000;
-          m.stallStart=null;
-          updateMonitorUI(index);
-        }
-      });
-      video.addEventListener('ratechange',()=>{
-        metrics[index].playbackRate=video.playbackRate||1;
-        updateMonitorUI(index);
-      });
-    }
-
-
-    function getStatTime(stats,primaryKey,fallbackKey){
-      if(!stats) return null;
-      const primary=stats[primaryKey];
-      if(Number.isFinite(primary) && primary>0) return primary;
-      const loading=stats.loading;
-      if(loading){
-        const fallback=loading[fallbackKey];
-        if(Number.isFinite(fallback) && fallback>0) return fallback;
-      }
-      return null;
-    }
-
-    function recalcAverageSpeed(metric){
-      const now = performance.now();
-      const windowStart = now - SPEED_AVG_WINDOW_MS;
-      while(metric.speedWindow.length){
-        const sample = metric.speedWindow[0];
-        const sampleEnd = sample.timestamp;
-        if(sampleEnd < windowStart) metric.speedWindow.shift();
-        else break;
-      }
-      if(!metric.speedWindow.length){
-        metric.avgSpeed = null;
-        return;
-      }
-      let totalBits = 0;
-      const windowEnd = now;
-      metric.speedWindow.forEach(sample=>{
-        const durationMs = sample.duration * 1000;
-        const sampleEnd = sample.timestamp;
-        const sampleStart = sampleEnd - durationMs;
-        if(sampleEnd <= windowStart) return;
-        const overlapStart = Math.max(sampleStart, windowStart);
-        const overlapEnd = Math.min(sampleEnd, windowEnd);
-        if(overlapEnd <= overlapStart) return;
-        const overlapDuration = overlapEnd - overlapStart;
-        const ratio = durationMs > 0 ? overlapDuration / durationMs : 1;
-        totalBits += sample.bits * ratio;
-      });
-      if(totalBits <= 0){
-        metric.avgSpeed = 0;
-        return;
-      }
-      const windowSeconds = SPEED_AVG_WINDOW_MS / 1000;
-      metric.avgSpeed = totalBits / (windowSeconds * 1e6);
-    }
-
-    function recordFragmentMetrics(index,stats,{pushToHistory=true}={}){
-      const m=metrics[index];
-      if(!stats) return;
-      const bytes=stats.total || stats.loaded || stats.totalbytes || stats.totalBytes || 0;
-      const trequest=getStatTime(stats,'trequest','start');
-      const tfirst=getStatTime(stats,'tfirst','first');
-      const tload=getStatTime(stats,'tload','end');
-      let downloadTime=null;
-      if(Number.isFinite(tload) && Number.isFinite(tfirst) && tload>tfirst){
-        downloadTime=(tload-tfirst)/1000;
-      }else if(Number.isFinite(tload) && Number.isFinite(trequest) && tload>trequest){
-        downloadTime=(tload-trequest)/1000;
-      }
-      const latency=(Number.isFinite(tfirst) && Number.isFinite(trequest) && tfirst>=trequest)?(tfirst-trequest)/1000:null;
-      if(downloadTime!==null && downloadTime>0 && bytes){
-        const durationSec=Math.max(downloadTime,0.001);
-        const bits=bytes*8;
-        const speed=bits/(durationSec*1e6);
-        m.lastSpeed=speed;
-        if(pushToHistory) pushHistory(m.speedHistory,speed,180);
-        m.speedWindow.push({timestamp:performance.now(),duration:durationSec,bits});
-        recalcAverageSpeed(m);
-      }
-      if(latency!==null && latency>=0){
-        m.lastLatency=latency;
-        if(pushToHistory) pushHistory(m.latencyHistory,latency,180);
-      }
-      m.lastDebug={
-        bytes,
-        downloadTime,
-        latency,
-        derived:{
-          trequest,
-          tfirst,
-          tload
-        },
-        stats:{
-          trequest:stats.trequest,
-          tfirst:stats.tfirst,
-          tload:stats.tload,
-          loaded:stats.loaded,
-          total:stats.total,
-          loading:stats.loading || null
-        }
-      };
-    }
-
-    function isRelevantMediaFragment(frag){
-      if(!frag) return true;
-      if(frag.type===undefined || frag.type===null) return true;
-      const ignoredTypes=new Set(['subtitle','key']);
-      return !ignoredTypes.has(frag.type);
-    }
-
-    function attachHlsListeners(hls,index){
-      hls.on(Hls.Events.FRAG_LOADED,(_,data)=>{
-        const frag=data?.frag;
-        if(!isRelevantMediaFragment(frag)) return;
-        const stats=data?.stats || frag?.stats;
-        recordFragmentMetrics(index,stats,{pushToHistory:false});
-        if(typeof hls.bandwidthEstimate==='number'&&hls.bandwidthEstimate>0){
-          const bw=hls.bandwidthEstimate/1e6;
-          metrics[index].lastBandwidth=bw;
-          pushHistory(metrics[index].bandwidthHistory,bw,180);
-        }
-        updateMonitorUI(index);
-      });
-
-      hls.on(Hls.Events.FRAG_BUFFERED,(_,data)=>{
-        const stats=data?.stats || data?.frag?.stats;
-        const frag=data?.frag;
-        if(!isRelevantMediaFragment(frag)) return;
-        recordFragmentMetrics(index,stats);
-        if(typeof hls.bandwidthEstimate==='number'&&hls.bandwidthEstimate>0){
-          const bw=hls.bandwidthEstimate/1e6;
-          metrics[index].lastBandwidth=bw;
-          pushHistory(metrics[index].bandwidthHistory,bw,180);
-        }
-        if(frag){
-          const start=typeof frag.start==='number'?frag.start:(typeof frag.startPTS==='number'?frag.startPTS:null);
-          const duration=typeof frag.duration==='number'?frag.duration:null;
-          if(start!==null && duration!==null){
-            metrics[index].pendingFragments.push({
-              sn: frag.sn,
-              end: start+duration,
-              bufferedAt: performance.now()
-            });
-            if(metrics[index].pendingFragments.length>120) metrics[index].pendingFragments.shift();
-          }
-        }
-        updateMonitorUI(index);
-      });
-
-      hls.on(Hls.Events.LEVEL_SWITCHED,(_,data)=>{
-        const level=hls.levels?.[data.level];
-        const m=metrics[index];
-        if(level){
-          if(level.width&&level.height) m.lastResolution=`${level.width}x${level.height}`;
-          if(level.bitrate) m.lastBitrate=level.bitrate;
-          const codec=level.codecSet||level.codecs||level.codec;
-          if(codec) m.lastCodec=codec;
-        }
-        updateMonitorUI(index);
-      });
-
-
-      hls.on(Hls.Events.ERROR,(_,data)=>{
-        const m=metrics[index];
-        if(!data) return;
-        if(data.type===Hls.ErrorTypes.NETWORK_ERROR) m.errors.network+=1;
-        else if(data.type===Hls.ErrorTypes.MEDIA_ERROR) m.errors.media+=1;
-        else m.errors.other+=1;
-        updateMonitorUI(index);
-      });
-    }
-
-
-    function resetMetricState(index){
-      const m=metrics[index];
-      m.speedHistory=[];
-      m.speedWindow=[];
-      m.latencyHistory=[];
-      m.bandwidthHistory=[];
-      m.bufferHistory=[];
-      m.ingestHistory=[];
-      m.pendingFragments=[];
-      m.lastSpeed=null;
-      m.avgSpeed=null;
-      m.lastLatency=null;
-      m.lastBandwidth=null;
-      m.lastBuffer=null;
-      m.lastIngestLatency=null;
-      m.lastBitrate=null;
-      m.lastResolution='-';
-      m.lastCodec='-';
-      m.dropped=0;
-      m.total=0;
-      m.stallCount=0;
-      m.stallDuration=0;
-      m.stallStart=null;
-      m.errors={network:0,media:0,other:0};
-      m.playbackRate=videos[index].playbackRate||1;
-      m.lastDebug=null;
-      updateMonitorUI(index);
-      updateTimelineForPlayer(index,true);
-      updatePlayButtons();
-    }
-
-
-    function safePlay(video){
-      const res=video.play();
-      if(res&&typeof res.catch==='function') res.catch(()=>{});
-    }
-
-    function scheduleResume(video,{resumeTime=null,shouldPlay=true}={}){
-      if(!video) return;
-      if(video._pendingResumeHandler){
-        video.removeEventListener('loadedmetadata',video._pendingResumeHandler);
-        video._pendingResumeHandler=null;
-      }
-      const hasTime = resumeTime!==null && resumeTime!==undefined && Number.isFinite(resumeTime);
-      const applyState=()=>{
-        if(hasTime){
-          let target=Math.max(0,resumeTime);
-          const duration=video.duration;
-          if(Number.isFinite(duration) && duration>0){
-            const maxTarget=Math.max(0,duration-0.1);
-            if(target>maxTarget) target=maxTarget;
-          }
-          try{ video.currentTime=target; }catch(err){}
-        }
-        if(shouldPlay) safePlay(video);
-        else video.pause();
-      };
-      if(hasTime && video.readyState < 1){
-        const handler=()=>{
-          video.removeEventListener('loadedmetadata',handler);
-          if(video._pendingResumeHandler===handler) video._pendingResumeHandler=null;
-          applyState();
-        };
-        video._pendingResumeHandler=handler;
-        video.addEventListener('loadedmetadata',handler);
-        if(shouldPlay===false) video.pause();
-      }else{
-        if(!shouldPlay) video.pause();
-        applyState();
-      }
-    }
-
-
-    function syncCanvasResolution(){
-      allCanvases.forEach(canvas=>{
-        if(!canvas) return;
-        const rect=canvas.getBoundingClientRect();
-        if(rect.width===0||rect.height===0) return;
-        canvas.width=rect.width;
-        canvas.height=rect.height;
-      });
-    }
-
-
-    function pushHistory(arr,value,limit=120){
-      if(value===null||value===undefined||Number.isNaN(value)) return;
-      arr.push(value);
-      if(arr.length>limit) arr.shift();
-    }
-
-
-    function drawSparkline(canvas,data,color){
-      if(!canvas) return;
-      const ctx=canvas.getContext('2d');
-      const width=canvas.width;
-      const height=canvas.height;
-      ctx.clearRect(0,0,width,height);
-      if(!data.length){
-        ctx.strokeStyle='rgba(255,255,255,0.2)';
-        ctx.strokeRect(0.5,0.5,width-1,height-1);
-        return;
-      }
-      const max=Math.max(...data);
-      const min=Math.min(...data);
-      const range=max-min || 1;
-      ctx.strokeStyle=color;
-      ctx.lineWidth=1.8;
-      ctx.beginPath();
-      data.forEach((val,idx)=>{
-        const x = data.length===1 ? width/2 : (idx/(data.length-1))* (width-4)+2;
-        const y = height - ((val-min)/range)*(height-4) - 2;
-        if(idx===0) ctx.moveTo(x,y);
-        else ctx.lineTo(x,y);
-      });
-      ctx.stroke();
-      ctx.strokeStyle='rgba(255,255,255,0.2)';
-      ctx.lineWidth=1;
-      ctx.strokeRect(0.5,0.5,width-1,height-1);
-    }
-
-
-    function formatNumber(value,unit,digits=2){
-      return (value!==null&&value!==undefined&&!Number.isNaN(value)) ? `${value.toFixed(digits)} ${unit}` : '-';
-    }
-
-
-    function updateMonitorUI(index){
-      const m=metrics[index];
-      recalcAverageSpeed(m);
-      if(!metricEls.speed[index]) return;
-      metricEls.speed[index].textContent=formatNumber(m.avgSpeed,'Mbps',2);
-      if(metricEls.speedInstant[index]) metricEls.speedInstant[index].textContent=formatNumber(m.lastSpeed,'Mbps',2);
-      metricEls.latency[index].textContent=m.lastLatency!==null&&m.lastLatency!==undefined&&!Number.isNaN(m.lastLatency)?`${m.lastLatency.toFixed(3)}  sec`:'-';
-      metricEls.bandwidth[index].textContent=formatNumber(m.lastBandwidth,'Mbps',2);
-      metricEls.buffer[index].textContent=m.lastBuffer!==null&&m.lastBuffer!==undefined&&!Number.isNaN(m.lastBuffer)?`${m.lastBuffer.toFixed(2)}  sec`:'-';
-      metricEls.ingest[index].textContent=m.lastIngestLatency!==null&&m.lastIngestLatency!==undefined&&!Number.isNaN(m.lastIngestLatency)?`${m.lastIngestLatency.toFixed(2)}  sec`:'-';
-      metricEls.playback[index].textContent=`${(m.playbackRate||1).toFixed(2)}x`;
-      metricEls.stallCount[index].textContent=`${m.stallCount} times`;
-      metricEls.stallDuration[index].textContent=`${m.stallDuration.toFixed(1)} sec`;
-      const qualityParts=[];
-      if(m.lastResolution&&m.lastResolution!=='-') qualityParts.push(m.lastResolution);
-      if(m.lastBitrate&&Number.isFinite(m.lastBitrate)) qualityParts.push(`${(m.lastBitrate/1000).toFixed(0)} kbps`);
-      metricEls.quality[index].textContent=qualityParts.length?qualityParts.join(' · '):'-';
-      metricEls.codec[index].textContent=`Codec: ${m.lastCodec&&m.lastCodec!=='-'?m.lastCodec:'-'}`;
-      if(m.total){
-        const ratio=(m.dropped/m.total)*100;
-        metricEls.dropped[index].textContent=`${m.dropped} / ${m.total} (${ratio.toFixed(2)}%)`;
-      }else if(m.dropped){
-        metricEls.dropped[index].textContent=`${m.dropped} / -`;
-      }else{
-        metricEls.dropped[index].textContent='-';
-      }
-      metricEls.errorNetwork[index].textContent=m.errors.network;
-      metricEls.errorMedia[index].textContent=m.errors.media;
-      metricEls.errorOther[index].textContent=m.errors.other;
-      drawSparkline(sparklineCanvases.speed[index],m.speedHistory,'#4cc3ff');
-      drawSparkline(sparklineCanvases.latency[index],m.latencyHistory,'#7ce8a0');
-      drawSparkline(sparklineCanvases.bandwidth[index],m.bandwidthHistory,'#ffad66');
-      drawSparkline(sparklineCanvases.buffer[index],m.bufferHistory,'#c989ff');
-      drawSparkline(sparklineCanvases.ingest[index],m.ingestHistory,'#8df7c8');
-    }
-
-
-    function currentBufferedAhead(video){
-      if(!video) return null;
-      try{
-        const {buffered,currentTime}=video;
-        for(let i=0;i<buffered.length;i++){
-          const start=buffered.start(i);
-          const end=buffered.end(i);
-          if(start<=currentTime && end>=currentTime) return Math.max(0,end-currentTime);
-        }
-        if(buffered.length>0){
-          const end=buffered.end(buffered.length-1);
-          return Math.max(0,end-currentTime);
-        }
-      }catch(err){ }
-      return null;
-    }
-
-
-    function updateDroppedFrames(video,index){
-      const m=metrics[index];
-      if(typeof video.getVideoPlaybackQuality==='function'){
-        const q=video.getVideoPlaybackQuality();
-        m.dropped=q.droppedVideoFrames||0;
-        m.total=q.totalVideoFrames||0;
-      }else if(video.webkitDroppedFrameCount!==undefined){
-        m.dropped=video.webkitDroppedFrameCount||0;
-        m.total=video.webkitDecodedFrameCount||0;
-      }
-    }
-
-
-    setInterval(()=>{
-      getActivePlayerIndices().forEach(index=>{
-        const video=videos[index];
-        if(!(video.currentSrc || video.src)) return;
-        const buffer=currentBufferedAhead(video);
-        if(buffer!==null){
-          metrics[index].lastBuffer=buffer;
-          pushHistory(metrics[index].bufferHistory,buffer,180);
-        }
-        metrics[index].playbackRate=video.playbackRate||1;
-        updateDroppedFrames(video,index);
-        const m=metrics[index];
-        if(m.pendingFragments.length){
-          const now=performance.now();
-          while(m.pendingFragments.length && video.currentTime>=m.pendingFragments[0].end-0.05){
-            const fragInfo=m.pendingFragments.shift();
-            const latency=(now-fragInfo.bufferedAt)/1000;
-            if(latency>=0){
-              m.lastIngestLatency=latency;
-              pushHistory(m.ingestHistory,latency,60);
-            }
-          }
-        }
-        updateMonitorUI(index);
-      });
-      updateTimelineUI();
-      updatePlayButtons();
-      const primaryA=videos[0];
-      const primaryB=videos[1];
-      const has1=!!(primaryA?.currentSrc || primaryA?.src);
-      const has2=!!(primaryB?.currentSrc || primaryB?.src);
-      if(has1 && has2){
-        const t1=primaryA.currentTime;
-        const t2=primaryB.currentTime;
-        const diff=t2-t1;
-        const sign=diff>=0?'+':'-';
-        timeDiffValueEl.textContent=`${sign}${Math.abs(diff).toFixed(3)}  sec`;
-        timeDiffDetailEl.textContent=`P1 ${t1.toFixed(3)} sec · P2 ${t2.toFixed(3)} sec`;
-      }else{
-        timeDiffValueEl.textContent='-';
-        timeDiffDetailEl.textContent='Shown when both players are loaded.';
-      }
-    },1000);
-  </script>
+  <script src="./assets/js/parse-exr.js"></script>
+  <script src="./assets/js/comparer-app.js"></script>
 </body>
 </html>
-
-
