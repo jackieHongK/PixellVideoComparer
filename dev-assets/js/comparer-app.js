@@ -172,6 +172,13 @@ const PLAYER_IDS = [1,2,3,4];
     const WEBCODECS_SUPPORTED=typeof VideoDecoder!=='undefined';
     const wcdStates=videos.map(()=>null);
 
+    // --- Per-player stats overlay ---
+    let statsActive=false;
+    let statsRafId=null;
+    const fpsHistories=videos.map(()=>[]);
+    const lastQuality=videos.map(()=>({total:0,dropped:0,time:performance.now()}));
+    const statsOverlays=videos.map(()=>null); // populated after DOM ready
+
 
     const metrics = videos.map(()=>({
       speedHistory:[],
@@ -267,6 +274,10 @@ const PLAYER_IDS = [1,2,3,4];
     applyModeState(DEFAULT_LAYOUT_ID);
     // Set up timeline thumbnail hover for all players
     videos.forEach((_,i)=>setupTimelineThumb(i));
+    // Stats overlay init + toggle button
+    initStatsOverlays();
+    const statsToggleBtn=document.getElementById('statsToggleBtn');
+    if(statsToggleBtn) statsToggleBtn.addEventListener('click',toggleStats);
 
 
     boxes.forEach((box,i)=>{
@@ -288,9 +299,12 @@ const PLAYER_IDS = [1,2,3,4];
       });
 
 
+      box.addEventListener("dragenter",e=>{ e.preventDefault(); box.classList.add('dragover-active'); });
+      box.addEventListener("dragleave",e=>{ if(!box.contains(e.relatedTarget)) box.classList.remove('dragover-active'); });
       box.addEventListener("dragover",e=>e.preventDefault());
       box.addEventListener("drop",e=>{
         e.preventDefault();
+        box.classList.remove('dragover-active');
         const dt=e.dataTransfer;
         if(dt.files.length>0) handleFile(dt.files[0],video,label,box,i);
         else{
@@ -1690,6 +1704,153 @@ const PLAYER_IDS = [1,2,3,4];
     function wcdHideCanvas(index){
       const st=wcdStates[index];
       if(st?.canvas) st.canvas.style.display='none';
+    }
+
+    // --- Stats overlay functions ---
+
+    function initStatsOverlays(){
+      PLAYER_IDS.forEach((pid,index)=>{
+        const box=boxes[index];
+        if(!box) return;
+        const el=document.createElement('div');
+        el.className='vid-stats';
+        el.id='vidStats'+pid;
+        // FPS sparkline canvas
+        const cv=document.createElement('canvas');
+        cv.width=200; cv.height=26;
+        el.appendChild(cv);
+        // Stats text container
+        const body=document.createElement('div');
+        body.className='vs-body';
+        el.appendChild(body);
+        box.appendChild(el);
+        statsOverlays[index]={el,canvas:cv,ctx:cv.getContext('2d'),body};
+      });
+    }
+
+    function toggleStats(){
+      statsActive=!statsActive;
+      const btn=document.getElementById('statsToggleBtn');
+      if(btn) btn.classList.toggle('active',statsActive);
+      if(statsActive){
+        startStatsLoop();
+      }else{
+        stopStatsLoop();
+        statsOverlays.forEach(ov=>{ if(ov) ov.el.classList.remove('visible'); });
+      }
+    }
+
+    function startStatsLoop(){
+      if(statsRafId) return;
+      const loop=()=>{
+        updateAllStats();
+        statsRafId=requestAnimationFrame(loop);
+      };
+      statsRafId=requestAnimationFrame(loop);
+    }
+
+    function stopStatsLoop(){
+      if(statsRafId){ cancelAnimationFrame(statsRafId); statsRafId=null; }
+    }
+
+    function updateAllStats(){
+      getActivePlayerIndices().forEach(i=>updateStatsForPlayer(i));
+    }
+
+    function updateStatsForPlayer(index){
+      const ov=statsOverlays[index];
+      if(!ov) return;
+      const v=videos[index];
+      const m=metrics[index];
+      if(!v||!hasVideoSource(v)){
+        ov.el.classList.remove('visible'); return;
+      }
+      ov.el.classList.add('visible');
+
+      // FPS via getVideoPlaybackQuality()
+      let fpsStr='—', dropStr='—';
+      if(typeof v.getVideoPlaybackQuality==='function'){
+        const q=v.getVideoPlaybackQuality();
+        const now=performance.now();
+        const lq=lastQuality[index];
+        const dt=(now-lq.time)/1000;
+        if(dt>=0.5){
+          const fDelta=q.totalVideoFrames-lq.total;
+          if(fDelta>0) fpsHistories[index].push(parseFloat((fDelta/dt).toFixed(2)));
+          if(fpsHistories[index].length>60) fpsHistories[index].shift();
+          lq.total=q.totalVideoFrames; lq.dropped=q.droppedVideoFrames; lq.time=now;
+        }
+        const hist=fpsHistories[index];
+        const curFps=hist.length?hist[hist.length-1]:null;
+        fpsStr=curFps!==null?curFps.toFixed(1)+'':'—';
+        const td=v.getVideoPlaybackQuality().droppedVideoFrames;
+        const tt=v.getVideoPlaybackQuality().totalVideoFrames;
+        if(tt>0) dropStr=((td/tt)*100).toFixed(1)+'%';
+      }
+
+      const res=v.videoWidth&&v.videoHeight?`${v.videoWidth}×${v.videoHeight}`:'—';
+      const codec=(m.lastCodec&&m.lastCodec!=='-')?m.lastCodec:'—';
+      const rate=m.playbackRate!==1?`${m.playbackRate}×`:'1×';
+      const stalls=String(m.stallCount);
+      const bitrate=m.lastBitrate?`${Math.round(m.lastBitrate/1000)}`:'';
+      const buffer=m.lastBuffer!=null?`${m.lastBuffer.toFixed(1)}s`:'';
+
+      // Sparkline
+      const hist=fpsHistories[index];
+      if(hist.length>1) drawStatsSparkline(ov.ctx,ov.canvas,hist);
+
+      // Text rows
+      const fpsCls=parseFloat(fpsStr)<18?'sv-warn':'';
+      const dropCls=parseFloat(dropStr)>2?'sv-warn':'';
+      ov.body.innerHTML=
+        `<div class="sv-row"><span class="sv-k">RES</span><span class="sv-v">${res}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">FPS</span><span class="sv-v ${fpsCls}">${fpsStr}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">DROP</span><span class="sv-v ${dropCls}">${dropStr}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">CODEC</span><span class="sv-v">${codec}</span></div>`+
+        (bitrate?`<div class="sv-row"><span class="sv-k">KBPS</span><span class="sv-v">${bitrate}</span></div>`:'')+
+        (buffer?`<div class="sv-row"><span class="sv-k">BUF</span><span class="sv-v">${buffer}</span></div>`:'')+
+        `<div class="sv-row"><span class="sv-k">RATE</span><span class="sv-v">${rate}</span></div>`+
+        `<div class="sv-row"><span class="sv-k">STALL</span><span class="sv-v">${stalls}</span></div>`;
+    }
+
+    function drawStatsSparkline(ctx,canvas,data){
+      const w=canvas.width, h=canvas.height;
+      ctx.clearRect(0,0,w,h);
+      const shown=data.slice(-40);
+      if(shown.length<2) return;
+      const maxV=Math.max(...shown,30);
+      const stepX=w/(shown.length-1);
+      // fill
+      ctx.beginPath();
+      shown.forEach((v,i)=>{
+        const x=i*stepX;
+        const y=h-(v/maxV)*(h-2)-1;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.lineTo((shown.length-1)*stepX,h);
+      ctx.lineTo(0,h);
+      ctx.closePath();
+      ctx.fillStyle='rgba(61,166,255,0.13)';
+      ctx.fill();
+      // line
+      ctx.beginPath();
+      shown.forEach((v,i)=>{
+        const x=i*stepX;
+        const y=h-(v/maxV)*(h-2)-1;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle='rgba(61,166,255,0.75)';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      // 24fps reference line
+      const refY=h-(24/maxV)*(h-2)-1;
+      ctx.beginPath();
+      ctx.setLineDash([3,3]);
+      ctx.moveTo(0,refY); ctx.lineTo(w,refY);
+      ctx.strokeStyle='rgba(255,200,60,0.3)';
+      ctx.lineWidth=1;
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     async function wcdDecodeFrameAt(index,targetSec){

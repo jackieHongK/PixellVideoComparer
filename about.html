@@ -1,189 +1,603 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>About | Pixell Video Comparer</title>
+  <title>Pixell Video Comparer — Frame-accurate. In your browser.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --rui-dark: #191c1f;
-      --rui-light: #ffffff;
-      --rui-surface: #f4f4f4;
-      --rui-blue: #494fdf;
-      --rui-muted: #8d969e;
-      --rui-border: #c9c9cd;
+      --dark: #191c1f;
+      --white: #ffffff;
+      --surface: #f4f4f4;
+      --blue: #494fdf;
+      --teal: #00a87e;
+      --muted: #8d969e;
+      --border: rgba(25,28,31,0.1);
     }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: var(--rui-light);
-      color: var(--rui-dark);
-      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--white);
+      color: var(--dark);
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
+    a { color: inherit; text-decoration: none; }
 
-    .page {
-      min-height: 100vh;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-    }
-
+    /* NAV */
     .nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 28px;
-      border-bottom: 1px solid rgba(25,28,31,0.12);
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 40px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
     }
-
-    .brand {
-      font-size: 18px;
-      font-weight: 600;
-      letter-spacing: 0.18px;
+    .nav-brand { display: flex; align-items: center; gap: 12px; }
+    .nav-logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .nav-name {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 16px; font-weight: 600; letter-spacing: -0.025em;
     }
-
+    .nav-pills { display: flex; gap: 10px; }
     .pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      height: 42px;
-      padding: 0 24px;
+      display: inline-flex; align-items: center;
+      height: 42px; padding: 0 22px;
       border-radius: 9999px;
-      border: 2px solid var(--rui-dark);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.16px;
-      transition: opacity 0.2s;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
+      transition: opacity 0.18s;
+      cursor: pointer; border: none; white-space: nowrap;
     }
+    .pill:hover { opacity: 0.8; }
+    .pill-dark { background: var(--dark); color: var(--white); }
+    .pill-out { background: transparent; color: var(--dark); border: 2px solid var(--dark); }
+    .pill-ghost { background: rgba(244,244,244,0.1); color: #f4f4f4; border: 2px solid rgba(244,244,244,0.35); }
 
-    .pill-dark {
-      background: var(--rui-dark);
-      color: var(--rui-light);
-    }
-
-    .pill-light {
-      background: transparent;
-      color: var(--rui-dark);
-    }
-
-    .pill:hover { opacity: 0.85; }
-
+    /* HERO */
     .hero {
-      padding: 48px 28px 28px;
+      padding: 88px 40px 72px;
+      max-width: 1200px; margin: 0 auto;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 9999px;
+      background: rgba(73,79,223,0.08);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 36px;
+    }
+    .eyebrow-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    .hero-headline {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: clamp(52px, 9.5vw, 120px);
+      line-height: 0.94; font-weight: 500; letter-spacing: -0.045em;
+      margin-bottom: 36px;
+    }
+    .hero-headline span { display: block; }
+    .hl-dim { color: #bcc1c8; }
+    .hl-blue { color: var(--blue); }
+    .hero-sub {
+      max-width: 560px; font-size: 19px; line-height: 1.68;
+      color: #505a63; margin-bottom: 40px;
+    }
+    .hero-pills { display: flex; flex-wrap: wrap; gap: 12px; }
+
+    /* DEMO */
+    .demo-wrap {
+      background: var(--dark);
+      padding: 80px 40px 100px;
+    }
+    .demo-caption {
+      text-align: center; margin-bottom: 28px;
+      font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+    .demo-frame {
+      max-width: 1060px; margin: 0 auto;
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: #0a0b0e;
+      box-shadow: 0 48px 120px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+    .demo-chrome {
+      display: flex; align-items: center; gap: 8px;
+      padding: 11px 16px;
+      background: rgba(25,28,31,0.98);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .demo-dot-r { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+    .demo-dot-y { width: 11px; height: 11px; border-radius: 50%; background: #ffbd2e; }
+    .demo-dot-g { width: 11px; height: 11px; border-radius: 50%; background: #28c840; }
+    .demo-chrome-title {
+      margin-left: 12px;
+      font-size: 11px; color: rgba(255,255,255,0.3);
+      font-family: 'Inter', monospace; letter-spacing: 0.02em;
+    }
+    .demo-badge {
+      margin-left: auto;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 4px;
+      background: rgba(170,20,20,0.8); color: #fff;
+    }
+    .demo-panels {
+      display: grid; grid-template-columns: 1fr 1fr;
+      height: 380px; gap: 1px;
+      background: rgba(255,255,255,0.08);
+    }
+    .demo-panel {
+      position: relative; overflow: hidden;
+      background: #0c0d10;
+    }
+    /* Fake video frame — cinematic gradient */
+    .dp1 { background: linear-gradient(145deg, #0c111e 0%, #0e1d3a 45%, #091322 100%); }
+    .dp1::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 70% at 30% 60%, rgba(73,79,223,0.22) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 55% at 75% 30%, rgba(0,168,126,0.14) 0%, transparent 55%),
+        radial-gradient(ellipse 30% 35% at 20% 20%, rgba(255,255,255,0.04) 0%, transparent 50%);
+    }
+    .dp2 { background: linear-gradient(145deg, #0c111e 0%, #0e1d3a 45%, #091322 100%); }
+    .dp2::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 70% at 30% 60%, rgba(73,79,223,0.38) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 55% at 75% 30%, rgba(0,168,126,0.26) 0%, transparent 55%),
+        radial-gradient(ellipse 30% 35% at 20% 20%, rgba(255,255,255,0.07) 0%, transparent 50%);
+    }
+    /* subtle scanline texture */
+    .demo-panel::before {
+      content: ''; position: absolute; inset: 0; z-index: 1;
+      background: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+      pointer-events: none;
+    }
+    .dp-label {
+      position: absolute; top: 12px; left: 12px; z-index: 3;
+      padding: 4px 10px; border-radius: 9999px;
+      background: rgba(25,28,31,0.86);
+      border: 1px solid rgba(255,255,255,0.2);
+      font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.88);
+      letter-spacing: 0.04em; backdrop-filter: blur(6px);
+    }
+    .dp-num {
+      position: absolute; top: 10px; right: 14px; z-index: 3;
+      font-size: 26px; font-weight: 700; color: rgba(255,255,255,0.12);
+      font-family: 'DM Sans', system-ui;
+    }
+    /* Stats overlay on right panel */
+    .dp-stats {
+      position: absolute; bottom: 10px; right: 10px; z-index: 4;
+      padding: 8px 10px; border-radius: 8px;
+      background: rgba(10,14,20,0.9);
+      border: 1px solid rgba(61,166,255,0.25);
+      font-size: 10px; font-family: 'Inter', monospace;
+      line-height: 1.8; color: rgba(200,235,255,0.9);
+      backdrop-filter: blur(8px);
+    }
+    .dp-stats .ok { color: #3fcf8e; }
+    .dp-stats .key { color: rgba(150,210,255,0.6); font-size: 9px; letter-spacing: 0.05em; }
+    /* Playbar in demo */
+    .demo-playbars {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: rgba(25,28,31,0.97);
+    }
+    .demo-playbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .demo-playbar + .demo-playbar { border-left: 1px solid rgba(255,255,255,0.07); }
+    .dp-play {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 7px; color: rgba(255,255,255,0.7);
+      flex-shrink: 0;
+    }
+    .dp-track { flex: 1; height: 2px; background: rgba(255,255,255,0.14); border-radius: 1px; position: relative; }
+    .dp-fill { height: 100%; width: 38%; background: var(--blue); border-radius: 1px; }
+    .dp-thumb {
+      position: absolute; top: 50%; left: 38%;
+      width: 10px; height: 10px; border-radius: 50%; background: #fff;
+      transform: translate(-50%, -50%);
+    }
+    .dp-time { font-size: 10px; color: rgba(255,255,255,0.35); font-family: 'Inter', monospace; flex-shrink: 0; }
+    .dp-p-label {
+      font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.4);
+      letter-spacing: 0.08em; flex-shrink: 0;
+    }
+
+    /* FEATURES */
+    .features {
+      padding: 100px 40px;
+      max-width: 1200px; margin: 0 auto;
+    }
+    .s-eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 16px;
+    }
+    .s-heading {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: clamp(34px, 4.5vw, 52px);
+      font-weight: 500; line-height: 1.06; letter-spacing: -0.03em;
+      max-width: 680px; margin-bottom: 56px;
+    }
+    .feat-grid {
       display: grid;
-      gap: 28px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
     }
-
-    .headline {
-      margin: 0;
-      font-size: clamp(36px, 7vw, 84px);
-      line-height: 1;
-      letter-spacing: -1.2px;
-      font-weight: 500;
-      max-width: 980px;
-    }
-
-    .sub {
-      margin: 0;
-      font-size: 18px;
-      line-height: 1.56;
-      letter-spacing: 0.18px;
-      color: #505a63;
-      max-width: 880px;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .content {
-      padding: 0 28px 40px;
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    }
-
-    .card {
-      border: 1px solid rgba(25,28,31,0.14);
-      border-radius: 20px;
-      padding: 20px;
+    .feat-card {
+      padding: 30px 28px; border-radius: 20px;
+      border: 1px solid rgba(25,28,31,0.1);
       background: #fff;
     }
+    .feat-card.dark {
+      background: var(--dark); color: #fff; border-color: transparent;
+    }
+    .feat-card.accent {
+      background: rgba(73,79,223,0.06); border-color: rgba(73,79,223,0.18);
+    }
+    .feat-icon {
+      width: 42px; height: 42px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 18px;
+    }
+    .fi-blue { background: rgba(73,79,223,0.12); }
+    .fi-teal { background: rgba(0,168,126,0.12); }
+    .fi-warm { background: rgba(246,239,230,1); }
+    .fi-white { background: rgba(255,255,255,0.1); }
+    .fi-gray { background: rgba(25,28,31,0.07); }
+    .feat-title {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 20px; font-weight: 500; letter-spacing: -0.02em;
+      margin-bottom: 8px; line-height: 1.22;
+    }
+    .feat-body {
+      font-size: 14px; line-height: 1.68; color: #505a63;
+    }
+    .feat-card.dark .feat-body { color: rgba(255,255,255,0.6); }
+    .feat-card.accent .feat-body { color: #505a63; }
+    .feat-stat {
+      display: inline-block; margin-top: 14px;
+      font-family: 'DM Sans', system-ui;
+      font-size: 26px; font-weight: 500; letter-spacing: -0.03em;
+      color: var(--blue);
+    }
+    .feat-card.dark .feat-stat { color: rgba(120,170,255,0.9); }
 
-    .card h3 {
-      margin: 0 0 10px;
-      font-size: 24px;
-      line-height: 1.2;
-      letter-spacing: -0.24px;
-      font-weight: 500;
+    /* SPECS */
+    .specs-wrap { background: var(--surface); padding: 100px 40px; }
+    .specs-inner { max-width: 1200px; margin: 0 auto; }
+    .specs-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1px; background: rgba(25,28,31,0.1);
+      border-radius: 20px; overflow: hidden; margin-top: 60px;
+    }
+    .spec-cell { padding: 36px 28px; background: var(--surface); }
+    .spec-num {
+      font-family: 'DM Sans', system-ui;
+      font-size: 50px; font-weight: 500; letter-spacing: -0.045em;
+      line-height: 1; margin-bottom: 6px;
+    }
+    .spec-unit { font-size: 26px; color: var(--muted); }
+    .spec-label { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* WHO SECTION */
+    .who-wrap { padding: 100px 40px; max-width: 1200px; margin: 0 auto; }
+    .who-grid {
+      display: grid; grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px; align-items: start;
+    }
+    .who-panel {
+      border-radius: 20px; padding: 36px 32px;
+      border: 1px solid rgba(25,28,31,0.1);
+      background: #fff;
+    }
+    .who-panel.dark {
+      background: var(--dark); color: #fff; border-color: transparent;
+    }
+    .who-panel h3 {
+      font-family: 'DM Sans', system-ui;
+      font-size: 28px; font-weight: 500; letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    .who-panel p { font-size: 15px; line-height: 1.7; color: #505a63; }
+    .who-panel.dark p { color: rgba(255,255,255,0.6); }
+    .who-list {
+      list-style: none; margin-top: 20px; display: grid; gap: 0;
+    }
+    .who-list li {
+      padding: 12px 0; border-top: 1px solid rgba(25,28,31,0.1);
+      font-size: 14px; line-height: 1.6; color: #505a63;
+    }
+    .who-panel.dark .who-list li {
+      border-top-color: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.62);
     }
 
-    .card p {
-      margin: 0;
-      font-size: 15px;
-      line-height: 1.56;
-      color: #505a63;
-      letter-spacing: 0.16px;
+    /* CTA DARK */
+    .cta-wrap {
+      background: var(--dark); padding: 120px 40px;
+      text-align: center;
     }
+    .cta-heading {
+      font-family: 'DM Sans', system-ui;
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 500; letter-spacing: -0.04em;
+      line-height: 0.98; color: #fff;
+      margin-bottom: 20px;
+    }
+    .cta-sub {
+      font-size: 18px; color: rgba(255,255,255,0.5);
+      max-width: 420px; margin: 0 auto 44px;
+      line-height: 1.65;
+    }
+    .cta-pills { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+    .pill-white { background: #fff; color: var(--dark); }
 
+    /* FOOTER */
     .footer {
-      padding: 12px 28px;
-      border-top: 1px solid rgba(25,28,31,0.12);
-      color: var(--rui-muted);
-      font-size: 12px;
-      letter-spacing: 0.16px;
-      background: #fff;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px;
+      padding: 18px 40px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
     }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a:hover { color: var(--dark); }
 
-    @media (max-width: 760px) {
-      .nav, .hero, .content, .footer { padding-left: 16px; padding-right: 16px; }
-      .hero { padding-top: 28px; }
+    /* RESPONSIVE */
+    @media (max-width: 960px) {
+      .feat-grid { grid-template-columns: 1fr 1fr; }
+      .specs-grid { grid-template-columns: 1fr 1fr; }
+      .who-grid { grid-template-columns: 1fr; }
+      .demo-panels { height: 260px; }
+    }
+    @media (max-width: 680px) {
+      .nav { padding: 12px 20px; }
+      .nav-pills .pill-out { display: none; }
+      .hero, .features, .who-wrap { padding: 56px 20px; }
+      .demo-wrap, .specs-wrap, .cta-wrap { padding: 60px 20px; }
+      .footer { padding: 14px 20px; }
+      .feat-grid { grid-template-columns: 1fr; }
+      .specs-grid { grid-template-columns: 1fr 1fr; }
+      .demo-panels { height: 180px; }
+      .dp-stats { display: none; }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header class="nav">
-      <div class="brand">Pixell Video Comparer</div>
-      <a class="pill pill-light" href="./index.html">Open Viewer</a>
-    </header>
 
-    <main>
-      <section class="hero">
-        <h1 class="headline">Frame-accurate before/after video comparison in your browser.</h1>
-        <p class="sub">
-          Pixell Video Comparer removes the repetitive pain of quality QA.
-          Load multiple sources, sync playback, inspect details with zoom/crop,
-          and export still frames instantly without setting up heavyweight tools.
-        </p>
-        <div class="actions">
-          <a class="pill pill-dark" href="./index.html">Launch Comparer</a>
-          <a class="pill pill-light" href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">View GitHub</a>
-        </div>
-      </section>
+<!-- NAV -->
+<header class="nav">
+  <a class="nav-brand" href="./about.html">
+    <!-- Logo: split-screen comparison mark -->
+    <svg class="nav-logo" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Pixell">
+      <rect width="34" height="34" rx="8" fill="#191c1f"/>
+      <rect x="4" y="8" width="11" height="18" rx="2.5" fill="white" opacity="0.9"/>
+      <rect x="19" y="8" width="11" height="18" rx="2.5" fill="#494fdf" opacity="0.95"/>
+      <rect x="16.5" y="6" width="1.5" height="22" rx="0.75" fill="white" opacity="0.5"/>
+    </svg>
+    <span class="nav-name">Pixell Video Comparer</span>
+  </a>
+  <nav class="nav-pills">
+    <a class="pill pill-out" href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">GitHub</a>
+    <a class="pill pill-dark" href="./index.html">Launch App</a>
+  </nav>
+</header>
 
-      <section class="content">
-        <article class="card">
-          <h3>Built for real QA flow</h3>
-          <p>Stop juggling separate players and resizing windows every time. Put all candidate outputs into one synchronized workspace.</p>
-        </article>
-        <article class="card">
-          <h3>Single-file, fast startup</h3>
-          <p>No framework overhead. Just open the HTML and start comparing videos immediately in a modern browser.</p>
-        </article>
-        <article class="card">
-          <h3>Shareable evidence</h3>
-          <p>Capture current frames as PNG with consistent naming so teams can review and discuss visual differences quickly.</p>
-        </article>
-      </section>
-    </main>
-
-    <footer class="footer">Designed with a Revolut-inspired visual language using local DESIGN.md guidance.</footer>
+<!-- HERO -->
+<section class="hero">
+  <div class="eyebrow">
+    <span class="eyebrow-dot"></span>
+    Built for Video Professionals
   </div>
+  <h1 class="hero-headline">
+    <span>Frame-accurate.</span>
+    <span class="hl-dim">In your browser.</span>
+    <span class="hl-blue">Video Comparer.</span>
+  </h1>
+  <p class="hero-sub">
+    Compare original, processed, and streamed outputs side by side.
+    Sync playback to the exact frame. Step through keyframes instantly.
+    No install. No codec barrier. Just precision.
+  </p>
+  <div class="hero-pills">
+    <a class="pill pill-dark" href="./index.html">Launch Viewer →</a>
+    <a class="pill pill-out" href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">View on GitHub</a>
+    <a class="pill pill-out" href="https://github.com/jackieHongK/PixellVideoComparer/issues/new?labels=feedback&title=Feedback%3A%20" target="_blank" rel="noreferrer">Send Feedback</a>
+  </div>
+</section>
+
+<!-- DEMO VISUAL -->
+<div class="demo-wrap">
+  <p class="demo-caption">Live in the browser — drag &amp; drop your files</p>
+  <div class="demo-frame">
+    <!-- Chrome bar -->
+    <div class="demo-chrome">
+      <div class="demo-dot-r"></div>
+      <div class="demo-dot-y"></div>
+      <div class="demo-dot-g"></div>
+      <span class="demo-chrome-title">Pixell Video Comparer — 1×2 layout</span>
+      <span class="demo-badge">DEV QA</span>
+    </div>
+    <!-- Split panels -->
+    <div class="demo-panels">
+      <!-- Panel 1: Source -->
+      <div class="demo-panel dp1">
+        <div class="dp-label">source_4k.mp4</div>
+        <div class="dp-num">1</div>
+      </div>
+      <!-- Panel 2: Enhanced with stats overlay -->
+      <div class="demo-panel dp2">
+        <div class="dp-label">enhanced_v4.mp4</div>
+        <div class="dp-num">2</div>
+        <!-- Stats overlay shown -->
+        <div class="dp-stats">
+          <div><span class="key">RES&nbsp;&nbsp;</span> 3840×2160</div>
+          <div><span class="key">FPS&nbsp;&nbsp;</span> <span class="ok">23.98</span></div>
+          <div><span class="key">DROP&nbsp;</span> <span class="ok">0.0%</span></div>
+          <div><span class="key">CODEC</span> H.265</div>
+          <div><span class="key">STALL</span> 0</div>
+        </div>
+      </div>
+    </div>
+    <!-- Dual playbars -->
+    <div class="demo-playbars">
+      <div class="demo-playbar">
+        <span class="dp-p-label">P1</span>
+        <div class="dp-play">▶</div>
+        <div class="dp-track"><div class="dp-fill"></div><div class="dp-thumb"></div></div>
+        <span class="dp-time">00:18 / 01:24</span>
+      </div>
+      <div class="demo-playbar">
+        <span class="dp-p-label">P2</span>
+        <div class="dp-play">▶</div>
+        <div class="dp-track"><div class="dp-fill"></div><div class="dp-thumb"></div></div>
+        <span class="dp-time">00:18 / 01:24</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="s-eyebrow">Capabilities</div>
+  <h2 class="s-heading">Everything experts need.<br>Nothing they don't.</h2>
+  <div class="feat-grid">
+    <article class="feat-card dark">
+      <div class="feat-icon fi-white">🎯</div>
+      <div class="feat-title">Frame-accurate sync</div>
+      <p class="feat-body">requestVideoFrameCallback drift correction keeps all players locked to the master — even across 4 simultaneous streams with no perceptible lag.</p>
+      <span class="feat-stat">4× streams</span>
+    </article>
+    <article class="feat-card">
+      <div class="feat-icon fi-blue">⚡</div>
+      <div class="feat-title">Instant frame stepping</div>
+      <p class="feat-body">WebCodecs + mp4box.js demux delivers sub-150ms response on arrow key steps for any length file — no more 1-second decode waits.</p>
+      <span class="feat-stat">&lt;150ms</span>
+    </article>
+    <article class="feat-card accent">
+      <div class="feat-icon fi-blue">📊</div>
+      <div class="feat-title">Per-player metric overlay</div>
+      <p class="feat-body">FPS, resolution, codec, dropped frames, bitrate, buffer — live sparkline graphs embedded in each video container. Toggle with one click.</p>
+    </article>
+    <article class="feat-card">
+      <div class="feat-icon fi-teal">🔁</div>
+      <div class="feat-title">Zero-stutter loop cache</div>
+      <p class="feat-body">Short clips (≤ 8s) are decoded once into GPU-resident ImageBitmaps. Every subsequent loop plays directly from cache — no re-decode, no stutter.</p>
+      <span class="feat-stat">≤8s cache</span>
+    </article>
+    <article class="feat-card">
+      <div class="feat-icon fi-warm">🎬</div>
+      <div class="feat-title">Codec fallback</div>
+      <p class="feat-body">FFmpeg.wasm detects unsupported codecs and transcodes on-the-fly to H.264. No re-encoding pipeline. No desktop tools. Works everywhere.</p>
+    </article>
+    <article class="feat-card">
+      <div class="feat-icon fi-gray">🖼</div>
+      <div class="feat-title">Timeline thumbnails</div>
+      <p class="feat-body">Hover the scrubber to preview frames. Built instantly from cache for short clips, background-extracted for long ones. Speed over quality, always.</p>
+    </article>
+  </div>
+</section>
+
+<!-- SPECS -->
+<div class="specs-wrap">
+  <div class="specs-inner">
+    <div class="s-eyebrow">Technical specs</div>
+    <h2 class="s-heading">Built for precision<br>at every layer.</h2>
+    <div class="specs-grid">
+      <div class="spec-cell">
+        <div class="spec-num">4<span class="spec-unit">×</span></div>
+        <div class="spec-label">Simultaneous streams, perfectly synced</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-num">&lt;150<span class="spec-unit">ms</span></div>
+        <div class="spec-label">Frame step response via WebCodecs</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-num">0<span class="spec-unit">px</span></div>
+        <div class="spec-label">Setup friction — open and compare instantly</div>
+      </div>
+      <div class="spec-cell">
+        <div class="spec-num">0<span class="spec-unit">×</span></div>
+        <div class="spec-label">Installs, plugins, or server deps required</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WHO -->
+<section class="who-wrap">
+  <div class="s-eyebrow">Who it's for</div>
+  <h2 class="s-heading">Built for the people who care about every frame.</h2>
+  <div class="who-grid">
+    <article class="who-panel dark">
+      <h3>Video AI &amp; Enhancement Teams</h3>
+      <p>Evaluating restoration, upscaling, denoising, interpolation, or AI-enhanced outputs? Load source and result side by side. Step frame by frame. See exactly what changed — and what didn't.</p>
+      <ul class="who-list">
+        <li>Before/after comparison of AI enhancement pipelines</li>
+        <li>Frame-level artifact inspection at full resolution</li>
+        <li>Multi-model output comparison in a single session</li>
+      </ul>
+    </article>
+    <div style="display:grid;gap:14px;">
+      <article class="who-panel">
+        <h3>Streaming QA Engineers</h3>
+        <p style="font-size:14px;color:#505a63;line-height:1.65;">Compare encoded, source, and live HLS streams. Monitor segment download speed, buffer depth, and stall events in real time.</p>
+      </article>
+      <article class="who-panel">
+        <h3>Media &amp; Post-Production</h3>
+        <p style="font-size:14px;color:#505a63;line-height:1.65;">Quick review without opening a full edit suite. Drag in candidates, sync playback, capture frames as evidence for team review.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-wrap">
+  <h2 class="cta-heading">Start comparing.<br>Right now.</h2>
+  <p class="cta-sub">Drag your files in. The rest takes care of itself.</p>
+  <div class="cta-pills">
+    <a class="pill pill-white" href="./index.html">Launch Viewer →</a>
+    <a class="pill pill-ghost" href="./comparer_dev_qa.html">Open Dev QA Build</a>
+    <a class="pill pill-ghost" href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">View Source</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <svg width="22" height="22" viewBox="0 0 34 34" fill="none">
+      <rect width="34" height="34" rx="7" fill="#191c1f"/>
+      <rect x="4" y="8" width="11" height="18" rx="2" fill="white" opacity="0.85"/>
+      <rect x="19" y="8" width="11" height="18" rx="2" fill="#494fdf" opacity="0.9"/>
+      <rect x="16.5" y="6" width="1.5" height="22" rx="0.75" fill="white" opacity="0.45"/>
+    </svg>
+    <span>© 2026 Pixell Video Comparer — Open source</span>
+  </div>
+  <nav class="footer-links">
+    <a href="./index.html">Viewer</a>
+    <a href="./comparer_dev_qa.html">Dev QA</a>
+    <a href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">GitHub</a>
+    <a href="https://github.com/jackieHongK/PixellVideoComparer/issues/new?labels=feedback" target="_blank" rel="noreferrer">Feedback</a>
+  </nav>
+</footer>
+
 </body>
 </html>
