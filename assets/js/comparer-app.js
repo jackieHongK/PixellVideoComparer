@@ -8,7 +8,9 @@ const PLAYER_IDS = [1,2,3,4];
     };
     const getLayoutConfig = (layoutId)=>LAYOUTS[layoutId] || LAYOUTS[DEFAULT_LAYOUT_ID];
     let activeLayoutId = DEFAULT_LAYOUT_ID;
+    let lastVisualLayoutId = DEFAULT_LAYOUT_ID;
     let activePlayerCount = getLayoutConfig(DEFAULT_LAYOUT_ID).playerCount;
+    let viewerMode = 'visual';
     const videos = PLAYER_IDS.map(i=>document.getElementById("video"+i));
     const images = PLAYER_IDS.map(i=>document.getElementById("image"+i));
     const syncedCursors = PLAYER_IDS.map(i=>document.getElementById("syncCursor"+i));
@@ -16,7 +18,37 @@ const PLAYER_IDS = [1,2,3,4];
     const videoColumns = boxes.map(box=>box ? box.closest('.video-column') : null);
     const labels = PLAYER_IDS.map(i=>document.getElementById("label"+i));
     const gridEl = document.querySelector('.grid');
+    const viewerModeSelect = document.getElementById("viewerModeSelect");
     const compareLayoutSelect = document.getElementById("compareLayoutSelect");
+    const diffModeSelect = document.getElementById("diffModeSelect");
+    const diffThresholdRange = document.getElementById("diffThresholdRange");
+    const diffThresholdValue = document.getElementById("diffThresholdValue");
+    const diffLabPanel = document.getElementById("diffLabPanel");
+    const diffLabBody = document.getElementById("diffLabBody");
+    const diffWorkflowText = document.getElementById("diffWorkflowText");
+    const diffMasterStatus = document.getElementById("diffMasterStatus");
+    const diffMasterFps = document.getElementById("diffMasterFps");
+    const diffOffsetStatus = document.getElementById("diffOffsetStatus");
+    const diffOffsetSeconds = document.getElementById("diffOffsetSeconds");
+    const diffDriftStatus = document.getElementById("diffDriftStatus");
+    const diffDriftHint = document.getElementById("diffDriftHint");
+    const inspectorCoord = document.getElementById("inspectorCoord");
+    const inspectorP1Rgb = document.getElementById("inspectorP1Rgb");
+    const inspectorP2Rgb = document.getElementById("inspectorP2Rgb");
+    const inspectorLuma = document.getElementById("inspectorLuma");
+    const inspectorDelta = document.getElementById("inspectorDelta");
+    const diffStatsPanel = document.getElementById("diffStatsPanel");
+    const diffHistogramCanvas = document.getElementById("diffHistogramCanvas");
+    const diffWaveformCanvas = document.getElementById("diffWaveformCanvas");
+    const p2VariantSelect = document.getElementById("p2VariantSelect");
+    const diffVariantList = document.getElementById("diffVariantList");
+    const roiCaptureBtn = document.getElementById("roiCaptureBtn");
+    const p2OffsetBadge = document.getElementById("p2OffsetBadge");
+    const p2OffsetBack10Btn = document.getElementById("p2OffsetBack10Btn");
+    const p2OffsetBack1Btn = document.getElementById("p2OffsetBack1Btn");
+    const p2OffsetForward1Btn = document.getElementById("p2OffsetForward1Btn");
+    const p2OffsetForward10Btn = document.getElementById("p2OffsetForward10Btn");
+    const p2OffsetResetBtn = document.getElementById("p2OffsetResetBtn");
     const captureStillButton = document.getElementById("captureStillButton");
     const monitorPanel = document.getElementById("monitorPanel");
     const monitorCloseButton = monitorPanel ? monitorPanel.querySelector('.monitor-close') : null;
@@ -94,9 +126,64 @@ const PLAYER_IDS = [1,2,3,4];
     };
     const CAPTURE_CANVAS = document.createElement('canvas');
     const CAPTURE_CTX = CAPTURE_CANVAS.getContext('2d');
+    const DIFF_WORK_CANVAS_A = document.createElement('canvas');
+    const DIFF_WORK_CANVAS_B = document.createElement('canvas');
+    const DIFF_OUTPUT_CANVAS = document.createElement('canvas');
+    const DIFF_MAX_WIDTH = 320;
+    const DIFF_REFRESH_MS = 80;
+    const SSIM_REFRESH_MS = 260;
+    const FLICKER_INTERVAL_MS = 450;
+    const FRAME_STATS_REFRESH_MS = 180;
+    const DEFAULT_FRAME_RATE = 30;
+    const ENABLE_AUTO_FRAME_CACHE = false;
+    const ENABLE_AUTO_THUMB_STRIP = false;
+    const DIFF_PLAYING_REFRESH_MS = 180;
+    const DIFF_PLAYING_ANALYSIS_REFRESH_MS = 520;
+    const DIFF_GUIDES = {
+      abs: { title:'Abs Diff', summary:'절대 픽셀 차이 크기 확인용 기본 뷰', meanings:['검정에 가까울수록 차이가 거의 없음','밝을수록 차이가 큼','채널별 차이 때문에 약한 색 틴트가 남을 수 있음'] },
+      signed: { title:'Signed Diff', summary:'결과가 원본보다 밝아졌는지/어두워졌는지 방향성 확인', meanings:['주황/붉은 계열: 결과(P2)가 원본(P1)보다 더 강하거나 밝음','푸른/청록 계열: 결과(P2)가 원본(P1)보다 더 약하거나 어두움','색이 진할수록 방향성 차이가 큼'] },
+      heatmap: { title:'Heatmap', summary:'미세 변화 분포를 과장해 보는 용도', meanings:['남색/파랑: 차이가 작음','청록/연두: 중간 차이','노랑/주황/빨강: 큰 차이','같은 색 계열에서 더 진하면 차이가 더 큼'] },
+      threshold: { title:'Thresholded Diff', summary:'노이즈를 버리고 임계값 이상 변화만 남김', meanings:['검정: 임계값 이하','자홍/분홍: 임계값 초과 차이','Threshold를 높일수록 더 큰 변화만 남음'] },
+      ssim: { title:'SSIM Map', summary:'픽셀값보다 구조 유사도를 보는 뷰', meanings:['짙은 파랑: 구조가 매우 유사함','청록/연두: 약한 구조 변화','노랑/빨강: 구조 유사도가 낮음','따뜻한 색일수록 시각적으로 거슬릴 가능성이 큼'] },
+      flicker: { title:'Flicker View', summary:'두 프레임을 번갈아 표시해 체감 차이 확인', meanings:['색상 의미 없음','깜빡일수록 위치/디테일/윤곽 차이가 큼','시간적으로 느껴지는 변화 탐지에 유용'] },
+      edge: { title:'Edge Diff', summary:'윤곽선과 경계 차이 확인', meanings:['검정: 에지 차이 거의 없음','밝을수록 윤곽 변화 큼','halo, oversharpen, 경계 깨짐 탐지에 유리'] },
+      chroma: { title:'Chroma Diff', summary:'밝기보다 색차 변화에 집중', meanings:['검정: 색상 차이 거의 없음','청록/보라/노랑 계열: 색 방향 변화','진할수록 색 이동이 큼'] }
+    };
+    const DIFF_WORKFLOW_TEXT = '1. P1에 원본, P2에 결과를 올립니다. 2. P2 frame offset을 +/-1f 또는 +/-10f로 먼저 맞춥니다. 3. Flicker나 Signed Diff로 정렬 상태를 확인합니다. 4. Abs / Heatmap / Threshold / SSIM / Edge / Chroma 순서로 결함 종류를 좁힙니다. 5. Hover Inspector와 Frame Stats로 수치 확인 후 ROI Capture로 근거 이미지를 저장합니다.';
+    Object.assign(DIFF_GUIDES, {
+      abs: { title:'Abs Diff', summary:'P1과 P2의 절대 픽셀 차이를 밝기로 표시합니다.', meanings:['검정에 가까울수록 차이가 거의 없습니다.','밝을수록 차이가 큽니다.','전체적으로 어디가 달라졌는지 빠르게 확인할 때 가장 먼저 보는 모드입니다.'] },
+      signed: { title:'Signed Diff', summary:'P2가 P1보다 더 밝아졌는지, 더 어두워졌는지를 방향성까지 표시합니다.', meanings:['붉은색/주황색은 P2가 P1보다 더 강하거나 밝아진 방향입니다.','푸른색/청록색은 P2가 P1보다 더 약하거나 어두워진 방향입니다.','색이 진할수록 차이 방향이 뚜렷합니다.'] },
+      heatmap: { title:'Heatmap', summary:'작은 차이까지 눈에 띄도록 컬러맵으로 강조합니다.', meanings:['차가운 색은 작은 차이입니다.','노랑/주황/빨강으로 갈수록 차이가 커집니다.','미세한 변화가 화면 어디에 몰려 있는지 확인할 때 유용합니다.'] },
+      threshold: { title:'Thresholded Diff', summary:'임계값 이상 차이만 남기고 나머지는 버립니다.', meanings:['검정은 현재 threshold 이하라서 무시된 차이입니다.','자홍색 계열은 threshold를 넘는 차이입니다.','노이즈를 걷어내고 실제 결함 후보만 보고 싶을 때 사용합니다.'] },
+      ssim: { title:'SSIM Map', summary:'픽셀값보다 구조 유사도 기준으로 손상 위치를 봅니다.', meanings:['차가운 파랑은 구조가 유사하다는 뜻입니다.','초록/노랑은 구조 차이가 중간 수준입니다.','주황/빨강은 구조 보존이 크게 깨진 영역입니다.'] },
+      flicker: { title:'Flicker View', summary:'P1과 P2를 실제 표시 비율 그대로 번갈아 보여 체감 차이를 찾습니다.', meanings:['색 자체에 의미는 없습니다.','깜빡일 때 윤곽이 흔들리거나 위치가 튀면 싱크 또는 구조 차이를 의심하면 됩니다.','frame offset을 먼저 맞춘 뒤 보는 것이 중요합니다.'] },
+      edge: { title:'Edge Diff', summary:'윤곽선과 경계 변화만 강조합니다.', meanings:['검정은 경계 차이가 거의 없습니다.','밝을수록 edge 변화가 큽니다.','halo, oversharpen, 경계 깨짐을 잡는 데 유리합니다.'] },
+      chroma: { title:'Chroma Diff', summary:'밝기보다 색차 변화에 집중합니다.', meanings:['검정은 색상 차이가 거의 없습니다.','청록/보라/노랑 방향은 색 이동 방향을 뜻합니다.','색이 진할수록 chroma shift가 큽니다.'] }
+    });
 
     const getActivePlayerIndices = ()=>PLAYER_IDS.map((_,index)=>index).filter(index=>index<activePlayerCount);
     const isPlayerActive = index => Number.isInteger(index) && index>=0 && index<activePlayerCount;
+    const clamp = (value, min, max)=>Math.min(max, Math.max(min, value));
+
+    function getFrameDuration(index){
+      const fps = frameTimingState[index]?.fpsEstimate;
+      return fps && Number.isFinite(fps) && fps > 0 ? 1 / fps : 1 / DEFAULT_FRAME_RATE;
+    }
+
+    function setEstimatedFps(index, fps, source='derived'){
+      if(!Number.isFinite(fps) || fps <= 0) return;
+      frameTimingState[index].fpsEstimate = clamp(fps, 1, 240);
+      frameTimingState[index].source = source;
+      updateDiffLabStatus();
+    }
+
+    function getPlayerOffsetSeconds(index){
+      return playerTimeOffsets[index] || 0;
+    }
+
+    function getPlayerOffsetFrames(index){
+      return Math.round(getPlayerOffsetSeconds(index) / getFrameDuration(0));
+    }
 
     function applyModeState(layoutId){
       const layout = getLayoutConfig(layoutId);
@@ -110,6 +197,7 @@ const PLAYER_IDS = [1,2,3,4];
       if(compareLayoutSelect && compareLayoutSelect.value !== activeLayoutId){
         compareLayoutSelect.value = activeLayoutId;
       }
+      document.body.classList.toggle('diff-lab-mode', viewerMode==='diff-lab');
       videoColumns.forEach((col,index)=>{
         if(!col) return;
         col.style.display = isPlayerActive(index) ? 'flex' : 'none';
@@ -132,6 +220,89 @@ const PLAYER_IDS = [1,2,3,4];
       updatePlayButtons();
       hideSyncedCursor();
       refreshPlaylistOverlay();
+      renderDiffView(performance.now(), true);
+    }
+
+    function applyViewerMode(mode,{preserveVisualLayout=true}={}){
+      viewerMode = mode === 'diff-lab' ? 'diff-lab' : 'visual';
+      if(viewerModeSelect && viewerModeSelect.value !== viewerMode){
+        viewerModeSelect.value = viewerMode;
+      }
+      const topControls=document.querySelector('.top-controls');
+      topControls?.classList.toggle('diff-lab-active', viewerMode==='diff-lab');
+      if(diffLabPanel){
+        diffLabPanel.classList.toggle('visible', viewerMode==='diff-lab');
+        diffLabPanel.setAttribute('aria-hidden', viewerMode==='diff-lab' ? 'false' : 'true');
+      }
+      if(viewerMode==='diff-lab'){
+        if(preserveVisualLayout) lastVisualLayoutId = activeLayoutId;
+        applyModeState('1x2');
+      }else{
+        applyModeState(lastVisualLayoutId || DEFAULT_LAYOUT_ID);
+      }
+      renderDiffGuide();
+      updateDiffLabStatus();
+      renderVariantRegistry();
+    }
+
+    function updateDiffLabStatus(){
+      if(diffWorkflowText) diffWorkflowText.textContent = DIFF_WORKFLOW_TEXT;
+      if(diffMasterStatus) diffMasterStatus.textContent = 'P1';
+      if(diffMasterFps){
+        const fps = frameTimingState[0]?.fpsEstimate;
+        const source = frameTimingState[0]?.source || 'default';
+        diffMasterFps.textContent = `fps ${fps ? fps.toFixed(3) : '-'} / ${source}`;
+      }
+      const p2Frames = getPlayerOffsetFrames(1);
+      const p2Seconds = getPlayerOffsetSeconds(1);
+      if(diffOffsetStatus) diffOffsetStatus.textContent = `${p2Frames}f`;
+      if(diffOffsetSeconds) diffOffsetSeconds.textContent = `${p2Seconds >= 0 ? '+' : ''}${p2Seconds.toFixed(3)} sec`;
+      if(p2OffsetBadge) p2OffsetBadge.textContent = `P2 ${p2Frames}f / ${p2Seconds >= 0 ? '+' : ''}${p2Seconds.toFixed(3)}s`;
+      const master = videos[0];
+      const slave = videos[1];
+      if(diffDriftStatus && master && slave && hasVideoSource(master) && hasVideoSource(slave)){
+        const expected = (master.currentTime || 0) + getPlayerOffsetSeconds(1);
+        const drift = (slave.currentTime || 0) - expected;
+        diffDriftStatus.textContent = `${drift >= 0 ? '+' : ''}${drift.toFixed(4)} sec`;
+        if(diffDriftHint){
+          diffDriftHint.textContent = Math.abs(drift) <= getFrameDuration(0) * 0.5
+            ? 'Frame sync looks stable.'
+            : 'Drift is larger than half a frame. Adjust P2 offset or press R.';
+        }
+      }
+    }
+
+    function setP2FrameOffset(frameCount){
+      playerTimeOffsets[1] = frameCount * getFrameDuration(0);
+      const master = videos[0];
+      const slave = videos[1];
+      if(master && slave && hasVideoSource(master) && hasVideoSource(slave)){
+        try{ slave.currentTime = Math.max(0, master.currentTime + playerTimeOffsets[1]); }catch(err){}
+      }
+      updateDiffLabStatus();
+      renderDiffView(performance.now(), true);
+      updateTimelineUI(true);
+    }
+
+    function adjustP2FrameOffset(deltaFrames){
+      const current = getPlayerOffsetFrames(1);
+      setP2FrameOffset(current + deltaFrames);
+    }
+
+    function ensureRoiRect(){
+      if(roiState.rectEl) return roiState.rectEl;
+      const rect = document.createElement('div');
+      rect.className = 'roi-selection-box';
+      boxes[1]?.appendChild(rect);
+      roiState.rectEl = rect;
+      return rect;
+    }
+
+    function toggleRoiCaptureMode(forceState){
+      roiState.armed = typeof forceState === 'boolean' ? forceState : !roiState.armed;
+      boxes[1]?.classList.toggle('roi-armed', roiState.armed);
+      if(roiCaptureBtn) roiCaptureBtn.classList.toggle('active', roiState.armed);
+      if(!roiState.armed && roiState.rectEl) roiState.rectEl.style.display = 'none';
     }
 
 
@@ -177,6 +348,40 @@ const PLAYER_IDS = [1,2,3,4];
     // --- WebCodecs frame decoder (local MP4/MOV > 8s) ---
     const WEBCODECS_SUPPORTED=typeof VideoDecoder!=='undefined';
     const wcdStates=videos.map(()=>null);
+    const diffViewState = {
+      canvas: null,
+      ctx: null,
+      rafId: null,
+      lastRenderAt: 0,
+      lastSsimAt: 0,
+      lastStatsAt: 0,
+      lastSsimSignature: '',
+      lastSsimBuffer: null,
+      notice: '',
+      latestFrame: null
+    };
+    const frameTimingState = videos.map(()=>({
+      fpsEstimate: DEFAULT_FRAME_RATE,
+      source: 'default',
+      rvfcHandle: null,
+      lastMediaTime: null,
+      lastPresentedFrames: null
+    }));
+    const playerTimeOffsets = videos.map(()=>0);
+    const diffVariantState = {
+      items: [],
+      nextId: 1,
+      activeId: null
+    };
+    const roiState = {
+      armed: false,
+      dragging: false,
+      startX: 0,
+      startY: 0,
+      box: null,
+      rectEl: null,
+      lastRect: null
+    };
 
     // --- Per-player stats overlay ---
     let statsActive=false;
@@ -226,11 +431,57 @@ const PLAYER_IDS = [1,2,3,4];
 
 
     syncCanvasResolution();
+    initDiffView();
     if(monitorCloseButton) monitorCloseButton.addEventListener('click',()=>toggleMonitor(false));
     window.addEventListener('resize', ()=>{
       syncCanvasResolution();
+      syncDiffCanvasResolution();
       metrics.forEach((_,i)=>updateMonitorUI(i));
     });
+    if(diffModeSelect){
+      diffModeSelect.addEventListener('change',()=>{
+        syncDiffControls();
+        renderDiffGuide();
+        renderDiffView(performance.now(), true);
+      });
+    }
+    if(diffThresholdRange){
+      diffThresholdRange.addEventListener('input',()=>{
+        syncDiffControls();
+        renderDiffView(performance.now(), true);
+      });
+    }
+    if(viewerModeSelect){
+      viewerModeSelect.addEventListener('change',()=>{
+        applyViewerMode(viewerModeSelect.value);
+      });
+    }
+    document.addEventListener('mouseup',e=>{
+      if(roiState.dragging) finishRoiSelection(e);
+    });
+    document.addEventListener('mousemove',e=>{
+      if(roiState.dragging) updateRoiSelectionDrag(e);
+    });
+    if(p2VariantSelect){
+      p2VariantSelect.addEventListener('change',()=>{
+        if(!p2VariantSelect.value){
+          diffVariantState.activeId = null;
+          renderVariantRegistry();
+          return;
+        }
+        loadSavedP2Variant(p2VariantSelect.value);
+      });
+    }
+    if(p2OffsetBack10Btn) p2OffsetBack10Btn.addEventListener('click',()=>adjustP2FrameOffset(-10));
+    if(p2OffsetBack1Btn) p2OffsetBack1Btn.addEventListener('click',()=>adjustP2FrameOffset(-1));
+    if(p2OffsetForward1Btn) p2OffsetForward1Btn.addEventListener('click',()=>adjustP2FrameOffset(1));
+    if(p2OffsetForward10Btn) p2OffsetForward10Btn.addEventListener('click',()=>adjustP2FrameOffset(10));
+    if(p2OffsetResetBtn) p2OffsetResetBtn.addEventListener('click',()=>setP2FrameOffset(0));
+    if(roiCaptureBtn){
+      roiCaptureBtn.addEventListener('click',()=>{
+        toggleRoiCaptureMode();
+      });
+    }
 
 
     videos.forEach((video,index)=>{
@@ -244,7 +495,10 @@ const PLAYER_IDS = [1,2,3,4];
       video.addEventListener('pause',()=>{
         updatePlayButtons();
         const masterIndex=getActivePlayerIndices()[0];
-        if(index===masterIndex) stopRVFCSync();
+        if(index===masterIndex){
+          stopRVFCSync();
+          hardAlignToMaster(masterIndex);
+        }
       });
       video.addEventListener('timeupdate',()=>updateTimelineForPlayer(index));
       video.addEventListener('seeking',()=>updateTimelineForPlayer(index,true));
@@ -277,13 +531,22 @@ const PLAYER_IDS = [1,2,3,4];
     initializePlaylistSystem();
     if(compareLayoutSelect){
       compareLayoutSelect.addEventListener('change',()=>{
+        if(viewerMode==='diff-lab'){
+          lastVisualLayoutId = compareLayoutSelect.value;
+          compareLayoutSelect.value = '1x2';
+          return;
+        }
+        lastVisualLayoutId = compareLayoutSelect.value;
         applyModeState(compareLayoutSelect.value);
       });
     }
     if(captureStillButton){
       captureStillButton.addEventListener('click',()=>captureAllVisibleVideoStills());
     }
-    applyModeState(DEFAULT_LAYOUT_ID);
+    applyViewerMode('visual',{preserveVisualLayout:false});
+    updateDiffLabStatus();
+    renderVariantRegistry();
+    clearDiffInspector();
     // Set up timeline thumbnail hover for all players
     videos.forEach((_,i)=>setupTimelineThumb(i));
     // Stats overlay init + toggle button
@@ -334,12 +597,23 @@ const PLAYER_IDS = [1,2,3,4];
       box.addEventListener("mousemove",e=>{
         handleZoomMove(e,box);
         updateSyncedCursor(i,e);
+        updateDiffInspectorFromEvent(i,e);
+        if(i===1) updateRoiSelectionDrag(e);
       });
       box.addEventListener("mouseenter",e=>updateSyncedCursor(i,e));
       box.addEventListener("mouseleave",e=>{
         const next=e.relatedTarget;
         const movingToOther=boxes.some((candidate,idx)=>idx!==i && candidate && next && candidate.contains(next));
         if(!movingToOther) hideSyncedCursor();
+        if(i===0 || i===1) clearDiffInspector();
+      });
+      box.addEventListener('mousedown',e=>{
+        if(i!==1 || !roiState.armed || viewerMode!=='diff-lab') return;
+        beginRoiSelection(e);
+      });
+      box.addEventListener('mouseup',e=>{
+        if(i!==1) return;
+        finishRoiSelection(e);
       });
       box.addEventListener("wheel",e=>{
         if(!box.classList.contains("loaded"))return;
@@ -898,7 +1172,7 @@ const PLAYER_IDS = [1,2,3,4];
       }
       if(mediaKind==='image'){
         const objectURL=URL.createObjectURL(file);
-        loadImageSource({url:objectURL,name:file.name,objectURL},label,box,index,{fromPlaylist});
+        loadImageSource({url:objectURL,name:file.name,objectURL,file},label,box,index,{fromPlaylist});
         return;
       }
       clearImageSource(index);
@@ -928,6 +1202,9 @@ const PLAYER_IDS = [1,2,3,4];
       },{once:true});
       label.textContent=file.name;
       box.classList.add("loaded");
+      if(index===1){
+        rememberP2Variant({ type:'file', file, name:file.name });
+      }
       updateTimelineForPlayer(index,true);
       updatePlayButtons();
       if(!fromPlaylist){
@@ -997,6 +1274,9 @@ const PLAYER_IDS = [1,2,3,4];
 
       updateTimelineForPlayer(index, true);
       updatePlayButtons();
+      if(index===1){
+        rememberP2Variant({ type:'url', url, name:url });
+      }
 
       if (!fromPlaylist) {
         currentPlaylistId = null;
@@ -1026,8 +1306,7 @@ const PLAYER_IDS = [1,2,3,4];
       const xPercent=((e.clientX-rect.left)/rect.width)*100;
       const yPercent=((e.clientY-rect.top)/rect.height)*100;
       getActivePlayerIndices().forEach(idx=>{
-        const v=videos[idx];
-        [v,images[idx]].filter(Boolean).forEach(el=>{
+        getTransformTargets(idx).forEach(el=>{
           el.style.transformOrigin=`${xPercent}% ${yPercent}%`;
         });
       });
@@ -1035,16 +1314,8 @@ const PLAYER_IDS = [1,2,3,4];
 
 
     function updateTransforms(){
-      const baseScale = cropState===0 ? 1 : 2;
       getActivePlayerIndices().forEach(idx=>{
-        const v=videos[idx];
-        [v,images[idx]].filter(Boolean).forEach(el=>{
-          if(cropState===1) el.style.transformOrigin="left center";
-          else if(cropState===2) el.style.transformOrigin="right center";
-          else if(!zoomedIn) el.style.transformOrigin="center center";
-          const totalScale = (zoomedIn ? zoom : 1) * baseScale;
-          el.style.transform=`scale(${totalScale})`;
-        });
+        syncTransformTargets(idx);
       });
     }
 
@@ -1246,8 +1517,12 @@ const PLAYER_IDS = [1,2,3,4];
       if(!video) return;
       const idx=videos.indexOf(video);
       if(idx>=0){
+        stopFrameRateTracking(idx);
         destroyFrameCache(idx); destroyThumbStrip(idx); destroyWebCodecs(idx);
         fileMetadata[idx]=null; fileMetaAnalyzing[idx]=false;
+        video._estimatedFrameRate = null;
+        frameTimingState[idx].fpsEstimate = DEFAULT_FRAME_RATE;
+        frameTimingState[idx].source = 'default';
         if(metaPanelVisible) refreshMetaTable();
       }
       destroyHls(video);
@@ -1291,6 +1566,9 @@ const PLAYER_IDS = [1,2,3,4];
       showImage(index);
       label.textContent=source.name;
       box.classList.add("loaded");
+      if(index===1){
+        rememberP2Variant(source.file ? { type:'file', file:source.file, name: source.name } : { type:'url', url: source.url, name: source.name });
+      }
       updateTimelineForPlayer(index,true);
       updatePlayButtons();
       if(!fromPlaylist){
@@ -1460,14 +1738,29 @@ const PLAYER_IDS = [1,2,3,4];
       const master=videos[masterIndex];
       const t=(master && Number.isFinite(master.currentTime)) ? master.currentTime : 0;
       activeIndices.forEach(i=>{
-        if(i!==masterIndex && hasVideoSource(videos[i])) videos[i].currentTime=t;
+        if(i!==masterIndex && hasVideoSource(videos[i])) videos[i].currentTime=Math.max(0, t + getPlayerOffsetSeconds(i));
       });
-      // Restart rVFC drift correction after manual sync
-      if(master && !master.paused) startRVFCSync(masterIndex);
       updateTimelineUI(true);
+      updateDiffLabStatus();
     }
 
-    // --- rVFC-based continuous drift correction ---
+    function hardAlignToMaster(masterIndex=0){
+      const activeIndices=getActivePlayerIndices();
+      if(!activeIndices.length) return;
+      const master=videos[masterIndex];
+      if(!master || !hasVideoSource(master)) return;
+      const masterTime = Number.isFinite(master.currentTime) ? master.currentTime : 0;
+      activeIndices.forEach(i=>{
+        if(i===masterIndex) return;
+        const slave=videos[i];
+        if(!hasVideoSource(slave)) return;
+        try{ slave.currentTime = Math.max(0, masterTime + getPlayerOffsetSeconds(i)); }catch(err){}
+      });
+      updateTimelineUI(true);
+      updateDiffLabStatus();
+    }
+
+    // --- rVFC-based drift monitor ---
     function startRVFCSync(masterIndex){
       stopRVFCSync();
       if(!RVFC_SUPPORTED) return;
@@ -1482,12 +1775,11 @@ const PLAYER_IDS = [1,2,3,4];
           if(i===rVFCMasterIndex) return;
           const slave=videos[i];
           if(!hasVideoSource(slave)) return;
-          const drift=Math.abs(slave.currentTime-masterTime);
-          // Only correct large drifts (> 500ms) to avoid constant seek-stutter
-          if(drift>RVFC_DRIFT_THRESHOLD){
-            try{ slave.currentTime=masterTime; }catch(e){}
-          }
+          const targetTime = Math.max(0, masterTime + getPlayerOffsetSeconds(i));
+          const drift=Math.abs(slave.currentTime-targetTime);
+          void drift;
         });
+        updateDiffLabStatus();
         const m=videos[rVFCMasterIndex];
         if(m && !m.paused && hasVideoSource(m)){
           rVFCHandle=m.requestVideoFrameCallback(tick);
@@ -1732,6 +2024,830 @@ const PLAYER_IDS = [1,2,3,4];
       if(st?.canvas) st.canvas.style.display='none';
     }
 
+    function initDiffView(){
+      const box=boxes[1];
+      if(!box) return;
+      const canvas=document.createElement('canvas');
+      canvas.className='diff-view-canvas';
+      box.appendChild(canvas);
+      diffViewState.canvas=canvas;
+      diffViewState.ctx=canvas.getContext('2d',{willReadFrequently:false});
+      syncDiffControls();
+      syncDiffCanvasResolution();
+      renderDiffGuide();
+      startDiffRenderLoop();
+    }
+
+    function renderDiffGuide(){
+      if(!diffLabBody) return;
+      const mode=diffModeSelect?.value || 'off';
+      const guide=DIFF_GUIDES[mode];
+      const common = `
+        <article class="diff-guide-card">
+          <div class="diff-guide-title">How To Read</div>
+          <div class="diff-guide-text">Diff Lab은 P1 원본과 P2 결과를 1:1로 겹쳐 보는 정밀 분석 모드입니다. 확대/축소와 기준 좌표는 원본 뷰와 동일하게 동기화됩니다.</div>
+          <div class="diff-guide-list">
+            <span>진한 색: 차이가 더 큼</span>
+            <span>옅은 색: 차이가 작음</span>
+            <span>검정 또는 어두운 영역: 거의 동일하거나 무시 가능한 차이</span>
+          </div>
+        </article>
+      `;
+      if(!guide){
+        diffLabBody.innerHTML = common + `<article class="diff-guide-card"><div class="diff-guide-title">Diff Off</div><div class="diff-guide-text">전문 diff 오버레이가 꺼져 있습니다. Visual Compare로 전체 배치를 보거나, Diff를 선택해 정밀 분석을 시작하세요.</div></article>`;
+        return;
+      }
+      diffLabBody.innerHTML = common + `
+        <article class="diff-guide-card active">
+          <div class="diff-guide-title">${guide.title}</div>
+          <div class="diff-guide-text">${guide.summary}</div>
+          <div class="diff-guide-list">${guide.meanings.map(item => `<span>${item}</span>`).join('')}</div>
+        </article>
+      `;
+    }
+
+    function renderVariantRegistry(){
+      if(p2VariantSelect){
+        const previous = p2VariantSelect.value;
+        p2VariantSelect.innerHTML = '<option value="">Current P2</option>' + diffVariantState.items.map(item=>`<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('');
+        p2VariantSelect.value = diffVariantState.activeId ? String(diffVariantState.activeId) : '';
+        if(previous && !p2VariantSelect.value) p2VariantSelect.value = previous;
+      }
+      if(diffVariantList){
+        if(!diffVariantState.items.length){
+          diffVariantList.innerHTML = '<div class="diff-guide-text">No saved P2 variants yet. Load another result into P2 and it will appear here.</div>';
+          return;
+        }
+        diffVariantList.innerHTML = diffVariantState.items.map(item=>`
+          <div class="diff-variant-item">
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <span>${escapeHtml(item.kindLabel)}</span>
+            </div>
+            <span>${diffVariantState.activeId === item.id ? 'active' : 'saved'}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function escapeHtml(value){
+      return String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+    }
+
+    function rememberP2Variant(item){
+      if(!item) return;
+      const key = item.type === 'file'
+        ? `file:${item.file?.name || item.name}:${item.file?.size || 0}:${item.file?.lastModified || 0}`
+        : `url:${item.url || item.name}`;
+      const existing = diffVariantState.items.find(entry => entry.key === key);
+      if(existing){
+        diffVariantState.activeId = existing.id;
+        renderVariantRegistry();
+        return;
+      }
+      diffVariantState.items.push({
+        id: diffVariantState.nextId++,
+        key,
+        type: item.type,
+        file: item.file || null,
+        url: item.url || null,
+        name: item.name || item.url || item.file?.name || `Variant ${diffVariantState.nextId}`,
+        kindLabel: item.type === 'file' ? 'local file' : 'remote URL'
+      });
+      diffVariantState.activeId = diffVariantState.items[diffVariantState.items.length - 1].id;
+      renderVariantRegistry();
+    }
+
+    function loadSavedP2Variant(id){
+      const entry = diffVariantState.items.find(item => String(item.id) === String(id));
+      if(!entry) return;
+      diffVariantState.activeId = entry.id;
+      renderVariantRegistry();
+      const resumeTime = Math.max(0, (videos[0]?.currentTime || 0) + getPlayerOffsetSeconds(1));
+      if(entry.type === 'file' && entry.file){
+        handleFile(entry.file, videos[1], labels[1], boxes[1], 1, { fromPlaylist: true, autoplay: false, resumeTime });
+      }else if(entry.type === 'url' && entry.url){
+        handleURL(entry.url, videos[1], labels[1], boxes[1], 1, { fromPlaylist: true, autoplay: false, resumeTime });
+      }
+    }
+
+    function clearDiffInspector(){
+      if(inspectorCoord) inspectorCoord.textContent = '-';
+      if(inspectorP1Rgb) inspectorP1Rgb.textContent = '-';
+      if(inspectorP2Rgb) inspectorP2Rgb.textContent = '-';
+      if(inspectorLuma) inspectorLuma.textContent = '-';
+      if(inspectorDelta) inspectorDelta.textContent = '-';
+    }
+
+    function updateDiffInspectorFromEvent(index, event){
+      if(viewerMode !== 'diff-lab' || !event || (index !== 0 && index !== 1)) return;
+      const frame = diffViewState.latestFrame;
+      if(!frame?.imgA || !frame?.imgB) return;
+      const point = mapEventToAnalysisPixel(boxes[index], event, frame.width, frame.height);
+      if(!point) return;
+      const sampleA = readImageSample(frame.imgA.data, frame.width, point.x, point.y);
+      const sampleB = readImageSample(frame.imgB.data, frame.width, point.x, point.y);
+      if(inspectorCoord) inspectorCoord.textContent = `${point.x}, ${point.y}`;
+      if(inspectorP1Rgb) inspectorP1Rgb.textContent = `${sampleA.r}, ${sampleA.g}, ${sampleA.b}`;
+      if(inspectorP2Rgb) inspectorP2Rgb.textContent = `${sampleB.r}, ${sampleB.g}, ${sampleB.b}`;
+      const lumaA = calcLuma(sampleA.r, sampleA.g, sampleA.b);
+      const lumaB = calcLuma(sampleB.r, sampleB.g, sampleB.b);
+      if(inspectorLuma) inspectorLuma.textContent = `P1 ${lumaA.toFixed(1)} / P2 ${lumaB.toFixed(1)}`;
+      if(inspectorDelta) inspectorDelta.textContent = `dRGB ${Math.abs(sampleA.r-sampleB.r)}/${Math.abs(sampleA.g-sampleB.g)}/${Math.abs(sampleA.b-sampleB.b)} · dY ${(lumaB-lumaA).toFixed(1)}`;
+    }
+
+    function mapEventToAnalysisPixel(box, event, width, height){
+      if(!box || !width || !height) return null;
+      const rect = box.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      if(x < 0 || y < 0 || x > rect.width || y > rect.height) return null;
+      const scale = Math.min(rect.width / width, rect.height / height);
+      const drawWidth = width * scale;
+      const drawHeight = height * scale;
+      const offsetX = (rect.width - drawWidth) / 2;
+      const offsetY = (rect.height - drawHeight) / 2;
+      const localX = (x - offsetX) / scale;
+      const localY = (y - offsetY) / scale;
+      if(localX < 0 || localY < 0 || localX >= width || localY >= height) return null;
+      return { x: clamp(Math.floor(localX), 0, width - 1), y: clamp(Math.floor(localY), 0, height - 1) };
+    }
+
+    function readImageSample(data, width, x, y){
+      const idx = (y * width + x) * 4;
+      return { r: data[idx], g: data[idx + 1], b: data[idx + 2], a: data[idx + 3] };
+    }
+
+    function calcLuma(r, g, b){
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    function beginRoiSelection(event){
+      const box = boxes[1];
+      if(!box) return;
+      roiState.dragging = true;
+      roiState.box = box;
+      roiState.lastRect = null;
+      const rect = box.getBoundingClientRect();
+      roiState.startX = event.clientX - rect.left;
+      roiState.startY = event.clientY - rect.top;
+      const selection = ensureRoiRect();
+      selection.style.display = 'block';
+      selection.style.left = `${roiState.startX}px`;
+      selection.style.top = `${roiState.startY}px`;
+      selection.style.width = '0px';
+      selection.style.height = '0px';
+    }
+
+    function updateRoiSelectionDrag(event){
+      if(!roiState.dragging || !roiState.box) return;
+      const rect = roiState.box.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, rect.width);
+      const y = clamp(event.clientY - rect.top, 0, rect.height);
+      const left = Math.min(roiState.startX, x);
+      const top = Math.min(roiState.startY, y);
+      const width = Math.abs(x - roiState.startX);
+      const height = Math.abs(y - roiState.startY);
+      const selection = ensureRoiRect();
+      selection.style.left = `${left}px`;
+      selection.style.top = `${top}px`;
+      selection.style.width = `${width}px`;
+      selection.style.height = `${height}px`;
+      roiState.lastRect = { left, top, width, height, boxWidth: rect.width, boxHeight: rect.height };
+    }
+
+    function finishRoiSelection(event){
+      if(!roiState.dragging) return;
+      roiState.dragging = false;
+      updateRoiSelectionDrag(event);
+      if(roiState.lastRect && roiState.lastRect.width > 4 && roiState.lastRect.height > 4){
+        exportCurrentRoi().catch(err=>console.warn('ROI export failed', err));
+      }
+      toggleRoiCaptureMode(false);
+    }
+
+    function syncDiffControls(){
+      const thresholdWrap = diffThresholdRange ? diffThresholdRange.closest('.diff-threshold-wrap') : null;
+      const showThreshold = viewerMode === 'diff-lab' && (diffModeSelect?.value === 'threshold');
+      if(thresholdWrap){
+        thresholdWrap.style.display = showThreshold ? 'inline-flex' : 'none';
+      }
+      if(diffThresholdValue && diffThresholdRange){
+        diffThresholdValue.textContent=String(diffThresholdRange.value);
+      }
+      updateDiffLabStatus();
+    }
+
+    function syncDiffCanvasResolution(){
+      const canvas=diffViewState.canvas;
+      const box=boxes[1];
+      if(!canvas||!box) return;
+      const rect=box.getBoundingClientRect();
+      if(rect.width<=0||rect.height<=0) return;
+      const width=Math.max(1,Math.round(rect.width));
+      const height=Math.max(1,Math.round(rect.height));
+      if(canvas.width!==width||canvas.height!==height){
+        canvas.width=width;
+        canvas.height=height;
+      }
+    }
+
+    function startDiffRenderLoop(){
+      if(diffViewState.rafId) cancelAnimationFrame(diffViewState.rafId);
+      const tick=(now)=>{
+        renderDiffView(now,false);
+        diffViewState.rafId=requestAnimationFrame(tick);
+      };
+      diffViewState.rafId=requestAnimationFrame(tick);
+    }
+
+    function renderDiffView(now,force){
+      const canvas=diffViewState.canvas;
+      const ctx=diffViewState.ctx;
+      const mode=diffModeSelect?.value || 'off';
+      const isPlaying = videos[0] && videos[1] && !videos[0].paused && !videos[1].paused;
+      const refreshInterval = isPlaying ? DIFF_PLAYING_REFRESH_MS : DIFF_REFRESH_MS;
+      if(!canvas||!ctx) return;
+      syncDiffCanvasResolution();
+      if(viewerMode!=='diff-lab' || mode==='off'){
+        canvas.style.display='none';
+        return;
+      }
+      if(!force && now-diffViewState.lastRenderAt<refreshInterval) return;
+
+      const indices=getActivePlayerIndices();
+      if(indices.length<2){
+        drawDiffNotice('Load at least two players.');
+        return;
+      }
+      const sourceA=getComparableSource(indices[0]);
+      const sourceB=getComparableSource(indices[1]);
+      if(!sourceA || !sourceB){
+        drawDiffNotice('Load both source and result.');
+        return;
+      }
+
+      const dims=getDiffFrameDimensions(sourceA, sourceB);
+      if(mode==='flicker'){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.imageSmoothingEnabled=false;
+        drawSourceContain(ctx, ((Math.floor(now/FLICKER_INTERVAL_MS)%2)===0) ? sourceA : sourceB, canvas.width, canvas.height);
+        syncTransformTargets(1);
+        canvas.style.display='block';
+        diffViewState.lastRenderAt=now;
+        if(now - diffViewState.lastStatsAt > (isPlaying ? DIFF_PLAYING_ANALYSIS_REFRESH_MS : FRAME_STATS_REFRESH_MS)){
+          const workCtxA=prepareDiffCanvas(DIFF_WORK_CANVAS_A,dims.width,dims.height);
+          const workCtxB=prepareDiffCanvas(DIFF_WORK_CANVAS_B,dims.width,dims.height);
+          drawSourceContain(workCtxA,sourceA,dims.width,dims.height);
+          drawSourceContain(workCtxB,sourceB,dims.width,dims.height);
+          updateFrameAnalysis(now, workCtxA.getImageData(0,0,dims.width,dims.height), workCtxB.getImageData(0,0,dims.width,dims.height), dims.width, dims.height);
+        }
+        return;
+      }
+      const workCtxA=prepareDiffCanvas(DIFF_WORK_CANVAS_A,dims.width,dims.height);
+      const workCtxB=prepareDiffCanvas(DIFF_WORK_CANVAS_B,dims.width,dims.height);
+      const outCtx=prepareDiffCanvas(DIFF_OUTPUT_CANVAS,dims.width,dims.height);
+      try{
+        drawSourceContain(workCtxA,sourceA,dims.width,dims.height);
+        drawSourceContain(workCtxB,sourceB,dims.width,dims.height);
+        const imgA=workCtxA.getImageData(0,0,dims.width,dims.height);
+        const imgB=workCtxB.getImageData(0,0,dims.width,dims.height);
+        if(now - diffViewState.lastStatsAt > (isPlaying ? DIFF_PLAYING_ANALYSIS_REFRESH_MS : FRAME_STATS_REFRESH_MS)){
+          updateFrameAnalysis(now, imgA, imgB, dims.width, dims.height);
+        }
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.imageSmoothingEnabled=false;
+        paintDiffMode(mode,imgA,imgB,outCtx,dims.width,dims.height,now);
+        drawCanvasContain(ctx, DIFF_OUTPUT_CANVAS, canvas.width, canvas.height);
+        syncTransformTargets(1);
+        canvas.style.display='block';
+        diffViewState.lastRenderAt=now;
+      }catch(error){
+        drawDiffNotice('Diff unavailable. Cross-origin or decode issue.');
+      }
+    }
+
+    function drawDiffNotice(message){
+      const canvas=diffViewState.canvas;
+      const ctx=diffViewState.ctx;
+      if(!canvas||!ctx) return;
+      syncTransformTargets(1);
+      canvas.style.display='block';
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='rgba(6, 10, 18, 0.86)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#e6f7ff';
+      ctx.font='600 14px Segoe UI';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(message, canvas.width/2, canvas.height/2);
+    }
+
+    function getComparableSource(index){
+      const image=images[index];
+      if(image?.src && image.complete && image.naturalWidth>0) return image;
+      const video=videos[index];
+      if(video && (video.currentSrc || video.src) && video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0) return video;
+      return null;
+    }
+
+    function getTransformTargets(index){
+      const targets=[videos[index], images[index]].filter(Boolean);
+      if(index===1 && diffViewState.canvas) targets.push(diffViewState.canvas);
+      return targets;
+    }
+
+    function syncTransformTargets(index){
+      const baseScale = cropState===0 ? 1 : 2;
+      getTransformTargets(index).forEach((el)=>{
+        if(cropState===1) el.style.transformOrigin="left center";
+        else if(cropState===2) el.style.transformOrigin="right center";
+        else if(!zoomedIn) el.style.transformOrigin="center center";
+        const totalScale = (zoomedIn ? zoom : 1) * baseScale;
+        el.style.transform=`scale(${totalScale})`;
+      });
+    }
+
+    function getDiffFrameDimensions(sourceA, sourceB){
+      const sourceWidth=Math.max(getSourceWidth(sourceA), getSourceWidth(sourceB), 2);
+      const sourceHeight=Math.max(getSourceHeight(sourceA), getSourceHeight(sourceB), 2);
+      const scale=Math.min(1, DIFF_MAX_WIDTH/sourceWidth);
+      return {
+        width: Math.max(2, Math.round(sourceWidth*scale)),
+        height: Math.max(2, Math.round(sourceHeight*scale))
+      };
+    }
+
+    function getSourceWidth(source){
+      return source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth;
+    }
+
+    function getSourceHeight(source){
+      return source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight;
+    }
+
+    function prepareDiffCanvas(canvas,width,height){
+      if(canvas.width!==width||canvas.height!==height){
+        canvas.width=width;
+        canvas.height=height;
+      }
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      ctx.clearRect(0,0,width,height);
+      return ctx;
+    }
+
+    function drawSourceContain(ctx,source,width,height){
+      const sw=getSourceWidth(source);
+      const sh=getSourceHeight(source);
+      ctx.fillStyle='#000';
+      ctx.fillRect(0,0,width,height);
+      if(!sw||!sh) return;
+      const scale=Math.min(width/sw,height/sh);
+      const dw=Math.max(1,Math.round(sw*scale));
+      const dh=Math.max(1,Math.round(sh*scale));
+      const dx=Math.floor((width-dw)/2);
+      const dy=Math.floor((height-dh)/2);
+      ctx.drawImage(source,dx,dy,dw,dh);
+    }
+
+    function drawCanvasContain(ctx, sourceCanvas, width, height){
+      const sw=sourceCanvas.width;
+      const sh=sourceCanvas.height;
+      if(!sw||!sh) return;
+      ctx.clearRect(0,0,width,height);
+      const scale=Math.min(width/sw,height/sh);
+      const dw=Math.max(1,Math.round(sw*scale));
+      const dh=Math.max(1,Math.round(sh*scale));
+      const dx=Math.floor((width-dw)/2);
+      const dy=Math.floor((height-dh)/2);
+      ctx.drawImage(sourceCanvas,dx,dy,dw,dh);
+    }
+
+    function paintDiffMode(mode,imgA,imgB,outCtx,width,height,now){
+      const threshold=Number(diffThresholdRange?.value || 24);
+      const output=outCtx.createImageData(width,height);
+      const out=output.data;
+      const dataA=imgA.data;
+      const dataB=imgB.data;
+
+      if(mode==='ssim'){
+        const signature=buildSsimSignature(imgA,imgB);
+        if(!diffViewState.lastSsimBuffer || diffViewState.lastSsimSignature!==signature || now-diffViewState.lastSsimAt>SSIM_REFRESH_MS){
+          diffViewState.lastSsimBuffer=buildSsimHeatmap(dataA,dataB,width,height);
+          diffViewState.lastSsimSignature=signature;
+          diffViewState.lastSsimAt=now;
+        }
+        output.data.set(diffViewState.lastSsimBuffer);
+        outCtx.putImageData(output,0,0);
+        return;
+      }
+      if(mode==='edge'){
+        output.data.set(buildEdgeDiff(dataA,dataB,width,height));
+        outCtx.putImageData(output,0,0);
+        return;
+      }
+
+      for(let i=0;i<dataA.length;i+=4){
+        const r1=dataA[i], g1=dataA[i+1], b1=dataA[i+2];
+        const r2=dataB[i], g2=dataB[i+1], b2=dataB[i+2];
+        if(mode==='abs'){
+          out[i]=Math.abs(r1-r2);
+          out[i+1]=Math.abs(g1-g2);
+          out[i+2]=Math.abs(b1-b2);
+          out[i+3]=255;
+          continue;
+        }
+        const lum1=0.2126*r1 + 0.7152*g1 + 0.0722*b1;
+        const lum2=0.2126*r2 + 0.7152*g2 + 0.0722*b2;
+        const delta=lum2-lum1;
+        const magnitude=Math.abs(delta);
+        if(mode==='signed'){
+          const strength=Math.min(1, magnitude/96);
+          if(delta>=0){
+            out[i]=Math.round(255*strength);
+            out[i+1]=Math.round(140*strength);
+            out[i+2]=Math.round(48*strength);
+          }else{
+            out[i]=Math.round(44*strength);
+            out[i+1]=Math.round(196*strength);
+            out[i+2]=Math.round(255*strength);
+          }
+          out[i+3]=255;
+          continue;
+        }
+        if(mode==='heatmap'){
+          const [hr,hg,hb]=heatmapColor(Math.min(1,magnitude/128));
+          out[i]=hr; out[i+1]=hg; out[i+2]=hb; out[i+3]=255;
+          continue;
+        }
+        if(mode==='threshold'){
+          const active=magnitude>=threshold;
+          out[i]=active?255:0;
+          out[i+1]=active?72:0;
+          out[i+2]=active?160:0;
+          out[i+3]=255;
+          continue;
+        }
+        if(mode==='chroma'){
+          const dr=r2-r1;
+          const dg=g2-g1;
+          const db=b2-b1;
+          const strength=Math.min(1, Math.sqrt(dr*dr+dg*dg+db*db)/180);
+          out[i]=Math.round(Math.max(0,128 + dr*0.7));
+          out[i+1]=Math.round(Math.max(0,128 + dg*0.7));
+          out[i+2]=Math.round(Math.max(0,128 + db*0.7));
+          out[i]=Math.min(255, Math.round(out[i]*strength));
+          out[i+1]=Math.min(255, Math.round(out[i+1]*strength));
+          out[i+2]=Math.min(255, Math.round(out[i+2]*strength));
+          out[i+3]=255;
+        }
+      }
+      outCtx.putImageData(output,0,0);
+    }
+
+    function updateFrameAnalysis(now, imgA, imgB, width, height){
+      diffViewState.latestFrame = {
+        imgA,
+        imgB,
+        width,
+        height
+      };
+      if(now - diffViewState.lastStatsAt < FRAME_STATS_REFRESH_MS) return;
+      const stats = computeFrameStats(imgA.data, imgB.data, width, height, Number(diffThresholdRange?.value || 24));
+      diffViewState.latestFrame.stats = stats;
+      renderFrameStats(stats);
+      renderScopes(imgA.data, imgB.data, width, height);
+      diffViewState.lastStatsAt = now;
+      updateDiffLabStatus();
+    }
+
+    function computeFrameStats(dataA, dataB, width, height, threshold){
+      let sumAbs = 0;
+      let sumSq = 0;
+      let thresholdHits = 0;
+      let sumLumaDelta = 0;
+      let chromaSum = 0;
+      let sampleCount = 0;
+      for(let i=0;i<dataA.length;i+=4){
+        const dr = dataB[i] - dataA[i];
+        const dg = dataB[i+1] - dataA[i+1];
+        const db = dataB[i+2] - dataA[i+2];
+        const abs = (Math.abs(dr) + Math.abs(dg) + Math.abs(db)) / 3;
+        const sq = (dr*dr + dg*dg + db*db) / 3;
+        const lumaA = calcLuma(dataA[i], dataA[i+1], dataA[i+2]);
+        const lumaB = calcLuma(dataB[i], dataB[i+1], dataB[i+2]);
+        const lumaDelta = lumaB - lumaA;
+        sumAbs += abs;
+        sumSq += sq;
+        sumLumaDelta += lumaDelta;
+        if(Math.abs(lumaDelta) >= threshold) thresholdHits += 1;
+        chromaSum += Math.sqrt(dr*dr + dg*dg + db*db);
+        sampleCount += 1;
+      }
+      const mae = sampleCount ? sumAbs / sampleCount : 0;
+      const rmse = sampleCount ? Math.sqrt(sumSq / sampleCount) : 0;
+      const psnr = rmse > 0 ? 20 * Math.log10(255 / rmse) : 99;
+      const thresholdHitPct = sampleCount ? (thresholdHits / sampleCount) * 100 : 0;
+      const chromaDelta = sampleCount ? chromaSum / sampleCount : 0;
+      const ssimScore = computeGlobalSsim(dataA, dataB, width, height);
+      const edgeDelta = computeAverageEdgeDelta(dataA, dataB, width, height);
+      return {
+        mae,
+        rmse,
+        psnr,
+        ssim: ssimScore,
+        thresholdHitPct,
+        chromaDelta,
+        edgeDelta,
+        lumaBias: sampleCount ? sumLumaDelta / sampleCount : 0
+      };
+    }
+
+    function computeGlobalSsim(dataA, dataB, width, height){
+      let sumA = 0, sumB = 0, sumAA = 0, sumBB = 0, sumAB = 0, count = 0;
+      const stride = Math.max(1, Math.floor(Math.sqrt((width * height) / 4096)));
+      for(let y=0;y<height;y+=stride){
+        for(let x=0;x<width;x+=stride){
+          const idx = (y * width + x) * 4;
+          const a = calcLuma(dataA[idx], dataA[idx+1], dataA[idx+2]);
+          const b = calcLuma(dataB[idx], dataB[idx+1], dataB[idx+2]);
+          sumA += a;
+          sumB += b;
+          sumAA += a * a;
+          sumBB += b * b;
+          sumAB += a * b;
+          count += 1;
+        }
+      }
+      if(!count) return 1;
+      const muA = sumA / count;
+      const muB = sumB / count;
+      const varA = sumAA / count - muA * muA;
+      const varB = sumBB / count - muB * muB;
+      const cov = sumAB / count - muA * muB;
+      const c1 = (0.01 * 255) ** 2;
+      const c2 = (0.03 * 255) ** 2;
+      const numerator = (2 * muA * muB + c1) * (2 * cov + c2);
+      const denominator = (muA * muA + muB * muB + c1) * (varA + varB + c2);
+      return denominator ? numerator / denominator : 1;
+    }
+
+    function computeAverageEdgeDelta(dataA, dataB, width, height){
+      const lumA = new Float32Array(width * height);
+      const lumB = new Float32Array(width * height);
+      for(let i=0,p=0;i<dataA.length;i+=4,p+=1){
+        lumA[p] = calcLuma(dataA[i], dataA[i+1], dataA[i+2]);
+        lumB[p] = calcLuma(dataB[i], dataB[i+1], dataB[i+2]);
+      }
+      let total = 0;
+      let count = 0;
+      for(let y=1;y<height-1;y+=1){
+        for(let x=1;x<width-1;x+=1){
+          const idx = y * width + x;
+          total += Math.abs(sobelAt(lumA, width, idx) - sobelAt(lumB, width, idx));
+          count += 1;
+        }
+      }
+      return count ? total / count : 0;
+    }
+
+    function renderFrameStats(stats){
+      if(!diffStatsPanel) return;
+      const cards = [
+        ['MAE', stats.mae.toFixed(3), 'Mean absolute pixel error'],
+        ['RMSE', stats.rmse.toFixed(3), 'Root mean square error'],
+        ['PSNR', stats.psnr.toFixed(2), 'Higher is closer'],
+        ['SSIM', stats.ssim.toFixed(4), '1.0 is structurally identical'],
+        ['Threshold Hit', `${stats.thresholdHitPct.toFixed(2)}%`, 'Pixels above current threshold'],
+        ['Edge Delta', stats.edgeDelta.toFixed(3), 'Average contour change'],
+        ['Chroma Delta', stats.chromaDelta.toFixed(3), 'Average RGB vector distance'],
+        ['Luma Bias', stats.lumaBias.toFixed(3), 'Positive means P2 is brighter']
+      ];
+      diffStatsPanel.innerHTML = cards.map(([label, value, hint])=>`
+        <div class="diff-stat-card">
+          <span class="diff-stat-label">${label}</span>
+          <strong>${value}</strong>
+          <small>${hint}</small>
+        </div>
+      `).join('');
+    }
+
+    function renderScopes(dataA, dataB, width, height){
+      renderHistogramScope(dataA, dataB, width, height);
+      renderWaveformScope(dataA, dataB, width, height);
+    }
+
+    function renderHistogramScope(dataA, dataB, width, height){
+      if(!diffHistogramCanvas) return;
+      const ctx = diffHistogramCanvas.getContext('2d');
+      const binsA = new Array(64).fill(0);
+      const binsB = new Array(64).fill(0);
+      for(let i=0;i<dataA.length;i+=4){
+        binsA[Math.min(63, Math.floor(calcLuma(dataA[i], dataA[i+1], dataA[i+2]) / 4))] += 1;
+        binsB[Math.min(63, Math.floor(calcLuma(dataB[i], dataB[i+1], dataB[i+2]) / 4))] += 1;
+      }
+      const w = diffHistogramCanvas.width;
+      const h = diffHistogramCanvas.height;
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(3,7,14,1)';
+      ctx.fillRect(0,0,w,h);
+      const maxBin = Math.max(...binsA, ...binsB, 1);
+      drawScopeLine(ctx, binsA, w, h, maxBin, 'rgba(86,186,255,0.95)');
+      drawScopeLine(ctx, binsB, w, h, maxBin, 'rgba(255,143,99,0.95)');
+    }
+
+    function drawScopeLine(ctx, bins, w, h, maxBin, color){
+      ctx.beginPath();
+      bins.forEach((bin, index)=>{
+        const x = (index / (bins.length - 1)) * (w - 8) + 4;
+        const y = h - (bin / maxBin) * (h - 10) - 4;
+        if(index===0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+    }
+
+    function renderWaveformScope(dataA, dataB, width, height){
+      if(!diffWaveformCanvas) return;
+      const ctx = diffWaveformCanvas.getContext('2d');
+      const w = diffWaveformCanvas.width;
+      const h = diffWaveformCanvas.height;
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(3,7,14,1)';
+      ctx.fillRect(0,0,w,h);
+      const xStep = Math.max(1, Math.floor(width / 120));
+      const yStep = Math.max(1, Math.floor(height / 90));
+      ctx.fillStyle = 'rgba(86,186,255,0.28)';
+      for(let x=0;x<width;x+=xStep){
+        for(let y=0;y<height;y+=yStep){
+          const idx = (y * width + x) * 4;
+          const luma = calcLuma(dataA[idx], dataA[idx+1], dataA[idx+2]);
+          const px = (x / Math.max(1, width - 1)) * (w - 4) + 2;
+          const py = h - (luma / 255) * (h - 4) - 2;
+          ctx.fillRect(px, py, 1.5, 1.5);
+        }
+      }
+      ctx.fillStyle = 'rgba(255,143,99,0.28)';
+      for(let x=0;x<width;x+=xStep){
+        for(let y=0;y<height;y+=yStep){
+          const idx = (y * width + x) * 4;
+          const luma = calcLuma(dataB[idx], dataB[idx+1], dataB[idx+2]);
+          const px = (x / Math.max(1, width - 1)) * (w - 4) + 2;
+          const py = h - (luma / 255) * (h - 4) - 2;
+          ctx.fillRect(px, py, 1.5, 1.5);
+        }
+      }
+    }
+
+    async function exportCurrentRoi(){
+      const frame = diffViewState.latestFrame;
+      const rect = roiState.lastRect;
+      if(!frame || !rect) return;
+      const mapped = mapDisplayRectToAnalysisRect(rect, frame.width, frame.height);
+      if(!mapped) return;
+      const ts = getCaptureTimestamp();
+      exportImageCrop(frame.imgA, mapped, `p1_roi_${ts}.png`);
+      exportImageCrop(frame.imgB, mapped, `p2_roi_${ts}.png`);
+      const diffImage = buildDiffImageForExport(diffModeSelect?.value || 'abs', frame.imgA, frame.imgB, frame.width, frame.height);
+      exportImageCrop(diffImage, mapped, `diff_roi_${ts}.png`);
+    }
+
+    function mapDisplayRectToAnalysisRect(rect, width, height){
+      if(!rect || !rect.boxWidth || !rect.boxHeight) return null;
+      const scale = Math.min(rect.boxWidth / width, rect.boxHeight / height);
+      const drawWidth = width * scale;
+      const drawHeight = height * scale;
+      const offsetX = (rect.boxWidth - drawWidth) / 2;
+      const offsetY = (rect.boxHeight - drawHeight) / 2;
+      const x = clamp(Math.floor((rect.left - offsetX) / scale), 0, width - 1);
+      const y = clamp(Math.floor((rect.top - offsetY) / scale), 0, height - 1);
+      const w = clamp(Math.ceil(rect.width / scale), 1, width - x);
+      const h = clamp(Math.ceil(rect.height / scale), 1, height - y);
+      return { x, y, w, h };
+    }
+
+    function exportImageCrop(imageData, crop, fileName){
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = crop.w;
+      canvas.height = crop.h;
+      ctx.putImageData(imageData, -crop.x, -crop.y);
+      triggerDownloadFromDataUrl(canvas.toDataURL('image/png'), fileName);
+    }
+
+    function buildDiffImageForExport(mode, imgA, imgB, width, height){
+      const canvas = document.createElement('canvas');
+      const outCtx = prepareDiffCanvas(canvas, width, height);
+      if(mode === 'flicker'){
+        outCtx.putImageData(imgB, 0, 0);
+      }else{
+        paintDiffMode(mode === 'off' ? 'abs' : mode, imgA, imgB, outCtx, width, height, performance.now());
+      }
+      return outCtx.getImageData(0, 0, width, height);
+    }
+
+    function buildSsimSignature(imgA,imgB){
+      const t1=videos[0]?.currentTime || 0;
+      const t2=videos[1]?.currentTime || 0;
+      return `${imgA.width}x${imgA.height}:${t1.toFixed(3)}:${t2.toFixed(3)}:${images[0]?.src || videos[0]?.currentSrc || ''}:${images[1]?.src || videos[1]?.currentSrc || ''}`;
+    }
+
+    function buildSsimHeatmap(dataA,dataB,width,height){
+      const grayA=new Float32Array(width*height);
+      const grayB=new Float32Array(width*height);
+      for(let i=0,p=0;i<dataA.length;i+=4,p+=1){
+        grayA[p]=0.2126*dataA[i] + 0.7152*dataA[i+1] + 0.0722*dataA[i+2];
+        grayB[p]=0.2126*dataB[i] + 0.7152*dataB[i+1] + 0.0722*dataB[i+2];
+      }
+      const out=new Uint8ClampedArray(width*height*4);
+      const radius=3;
+      const c1=(0.01*255)*(0.01*255);
+      const c2=(0.03*255)*(0.03*255);
+      for(let y=0;y<height;y+=1){
+        for(let x=0;x<width;x+=1){
+          let sumA=0,sumB=0,sumAA=0,sumBB=0,sumAB=0,count=0;
+          for(let oy=-radius;oy<=radius;oy+=1){
+            const py=Math.min(height-1,Math.max(0,y+oy));
+            for(let ox=-radius;ox<=radius;ox+=1){
+              const px=Math.min(width-1,Math.max(0,x+ox));
+              const idx=py*width+px;
+              const a=grayA[idx];
+              const b=grayB[idx];
+              sumA+=a; sumB+=b; sumAA+=a*a; sumBB+=b*b; sumAB+=a*b; count+=1;
+            }
+          }
+          const muA=sumA/count;
+          const muB=sumB/count;
+          const varA=(sumAA/count) - muA*muA;
+          const varB=(sumBB/count) - muB*muB;
+          const cov=(sumAB/count) - muA*muB;
+          const numerator=(2*muA*muB + c1) * (2*cov + c2);
+          const denominator=(muA*muA + muB*muB + c1) * (varA + varB + c2);
+          const ssim=denominator!==0 ? numerator/denominator : 1;
+          const error=Math.min(1,Math.max(0,(1-ssim)*0.5));
+          const [r,g,b]=heatmapColor(error);
+          const outIdx=(y*width + x)*4;
+          out[outIdx]=r;
+          out[outIdx+1]=g;
+          out[outIdx+2]=b;
+          out[outIdx+3]=255;
+        }
+      }
+      return out;
+    }
+
+    function buildEdgeDiff(dataA,dataB,width,height){
+      const lumA=new Float32Array(width*height);
+      const lumB=new Float32Array(width*height);
+      for(let i=0,p=0;i<dataA.length;i+=4,p+=1){
+        lumA[p]=0.2126*dataA[i] + 0.7152*dataA[i+1] + 0.0722*dataA[i+2];
+        lumB[p]=0.2126*dataB[i] + 0.7152*dataB[i+1] + 0.0722*dataB[i+2];
+      }
+      const out=new Uint8ClampedArray(width*height*4);
+      for(let y=1;y<height-1;y+=1){
+        for(let x=1;x<width-1;x+=1){
+          const idx=y*width+x;
+          const edgeA=sobelAt(lumA,width,idx);
+          const edgeB=sobelAt(lumB,width,idx);
+          const delta=Math.min(1, Math.abs(edgeA-edgeB)/140);
+          const value=Math.round(delta*255);
+          const outIdx=idx*4;
+          out[outIdx]=value;
+          out[outIdx+1]=Math.round(value*0.88);
+          out[outIdx+2]=Math.round(value*0.35);
+          out[outIdx+3]=255;
+        }
+      }
+      return out;
+    }
+
+    function sobelAt(luma,width,idx){
+      const a=luma[idx-width-1], b=luma[idx-width], c=luma[idx-width+1];
+      const d=luma[idx-1], f=luma[idx+1];
+      const g=luma[idx+width-1], h=luma[idx+width], i=luma[idx+width+1];
+      const gx=(-a + c) + (-2*d + 2*f) + (-g + i);
+      const gy=(-a -2*b -c) + (g +2*h +i);
+      return Math.sqrt(gx*gx + gy*gy);
+    }
+
+    function heatmapColor(value){
+      const t=Math.min(1,Math.max(0,value));
+      if(t<0.25) return lerpColor([14,26,82],[0,168,255],t/0.25);
+      if(t<0.5) return lerpColor([0,168,255],[0,255,170],(t-0.25)/0.25);
+      if(t<0.75) return lerpColor([0,255,170],[255,214,64],(t-0.5)/0.25);
+      return lerpColor([255,214,64],[255,64,64],(t-0.75)/0.25);
+    }
+
+    function lerpColor(a,b,t){
+      return [
+        Math.round(a[0] + (b[0]-a[0])*t),
+        Math.round(a[1] + (b[1]-a[1])*t),
+        Math.round(a[2] + (b[2]-a[2])*t)
+      ];
+    }
+
     // --- Stats overlay functions ---
 
     function initStatsOverlays(){
@@ -1887,7 +3003,7 @@ const PLAYER_IDS = [1,2,3,4];
       if(typeof factory!=='function') throw new Error('MediaInfo not loaded');
       mediaInfoInstance=await factory({
         format:'JSON',
-        locateFile:(path)=>`./assets/vendor/${path}`
+        locateFile:(path)=>`./dev-assets/vendor/${path}`
       });
       return mediaInfoInstance;
     }
@@ -1904,10 +3020,22 @@ const PLAYER_IDS = [1,2,3,4];
       return {
         tracks:[
           {'@type':'General','File name':file.name,'Format':ext,'Duration':dur,'File size':fmtSize(file.size),'Overall bit rate':obr},
-          {'@type':'Video','Width':vw||'','Height':vh||'','Display aspect ratio':ar},
+          {'@type':'Video','Width':vw||'','Height':vh||'','Display aspect ratio':ar,'FrameRate': video && Number.isFinite(video._estimatedFrameRate) ? String(video._estimatedFrameRate) : ''},
         ],
         fallback:true,
       };
+    }
+
+    function extractFrameRateFromTracks(meta){
+      const tracks = meta?.tracks || [];
+      const videoTrack = tracks.find(track => track['@type'] === 'Video');
+      if(!videoTrack) return null;
+      const direct = parseFloat(videoTrack.FrameRate || videoTrack['Frame rate'] || videoTrack.Frame_rate);
+      if(Number.isFinite(direct) && direct > 0) return direct;
+      const numerator = parseFloat(videoTrack.FrameRate_Num || videoTrack['FrameRate_Num']);
+      const denominator = parseFloat(videoTrack.FrameRate_Den || videoTrack['FrameRate_Den']);
+      if(Number.isFinite(numerator) && Number.isFinite(denominator) && denominator > 0) return numerator / denominator;
+      return null;
     }
 
     async function analyzeFileMetadata(file, index){
@@ -1926,6 +3054,11 @@ const PLAYER_IDS = [1,2,3,4];
         const raw=await mi.analyzeData(getSize,readChunk);
         const parsed=typeof raw==='string'?JSON.parse(raw):raw;
         fileMetadata[index]={tracks: parsed?.media?.track||[]};
+        const fps = extractFrameRateFromTracks(fileMetadata[index]);
+        if(fps){
+          videos[index]._estimatedFrameRate = fps;
+          setEstimatedFps(index, fps, 'metadata');
+        }
       }catch(e){
         console.warn('MediaInfo failed, using fallback:',e.message);
       }finally{
@@ -2258,6 +3391,9 @@ const PLAYER_IDS = [1,2,3,4];
         if(!range){ pp.popup.style.display='none'; return; }
         const time=range.start+(range.end-range.start)*ratio;
         const bm=getThumbAtTime(index,time);
+        if(!bm && videos[index]?._objectURL && !thumbStrips[index].building){
+          buildThumbStripBackground(videos[index], index).catch(()=>{});
+        }
         if(!bm){ pp.popup.style.display='none'; return; }
         if(pp.canvas.width!==bm.width||pp.canvas.height!==bm.height){
           pp.canvas.width=bm.width; pp.canvas.height=bm.height;
@@ -2365,19 +3501,24 @@ const PLAYER_IDS = [1,2,3,4];
     }
 
     function stepFrames(shift,forward){
-      const step=(shift?10:1)/30;
-      getActivePlayerIndices().forEach(index=>{
+      const activeIndices = getActivePlayerIndices();
+      if(!activeIndices.length) return;
+      const masterIndex = activeIndices[0];
+      const master = videos[masterIndex];
+      const frameStep = shift ? 10 : 1;
+      const masterTarget = Math.max(0, (master?.currentTime || 0) + (forward ? 1 : -1) * frameStep * getFrameDuration(masterIndex));
+      activeIndices.forEach(index=>{
         const v=videos[index];
         if(!hasVideoSource(v)) return;
         if(!v.paused) v.pause();
-        const newTime=Math.max(0,v.currentTime+(forward?step:-step));
+        const newTime=index===masterIndex ? masterTarget : Math.max(0, masterTarget + getPlayerOffsetSeconds(index));
         if(!drawCacheFrameAtTime(index,newTime)&&wcdStates[index]){
-          // WebCodecs path: async GPU decode for long non-cached videos
           wcdDecodeFrameAt(index,newTime).catch(()=>{});
         }
         try{ v.currentTime=newTime; }catch(e){}
       });
       updateTimelineUI(true);
+      updateDiffLabStatus();
     }
     function adjustSpeed(delta){
       getActivePlayerIndices().forEach(i=>{
@@ -2544,30 +3685,57 @@ const PLAYER_IDS = [1,2,3,4];
       const clamped=Math.min(Math.max(percent,0),1);
       const applyAll=targetIndex===undefined;
       if(targetIndex!==undefined && !isPlayerActive(targetIndex)) return;
-      const apply=(video)=>{
+      const apply=(video,index,masterTarget=null)=>{
         const range=getSeekRange(video);
         if(!range) return;
         const span=range.end-range.start;
         if(!(span>0)) return;
-        const target=range.start+span*clamped;
+        const target=masterTarget!==null && index!==0 ? masterTarget + getPlayerOffsetSeconds(index) : range.start+span*clamped;
         if(Number.isFinite(target)){
-          try{ video.currentTime=target; }catch(err){}
+          try{ video.currentTime=Math.max(range.start,target); }catch(err){}
         }
       };
       if(applyAll){
-        getActivePlayerIndices().forEach(index=>apply(videos[index]));
+        const masterRange=getSeekRange(videos[0]);
+        const masterTarget=masterRange ? masterRange.start + (masterRange.end-masterRange.start)*clamped : null;
+        getActivePlayerIndices().forEach(index=>apply(videos[index],index,masterTarget));
       }else{
         const video=videos[targetIndex];
-        if(video) apply(video);
+        if(video) apply(video,targetIndex);
       }
       updateTimelineUI(true);
+      updateDiffLabStatus();
     }
 
     function jumpToLatestBuffered(){
+      const master = videos[0];
+      let masterTarget = null;
+      if(master){
+        if(master.buffered && master.buffered.length){
+          const last=master.buffered.length-1;
+          const end=master.buffered.end(last);
+          const start=master.buffered.start(last);
+          if(Number.isFinite(end)){
+            masterTarget=end-0.3;
+            if(!Number.isFinite(start) || masterTarget<start) masterTarget=start;
+          }
+        }
+        if(masterTarget===null){
+          const range=getSeekRange(master);
+          if(range){
+            masterTarget=range.end-0.3;
+            if(masterTarget<range.start) masterTarget=range.start;
+          }
+        }
+      }
       getActivePlayerIndices().forEach(index=>{
         const video=videos[index];
         let target=null;
-        if(video.buffered && video.buffered.length){
+        if(index===0 && masterTarget!==null){
+          target = masterTarget;
+        }else if(masterTarget!==null){
+          target = masterTarget + getPlayerOffsetSeconds(index);
+        }else if(video.buffered && video.buffered.length){
           const last=video.buffered.length-1;
           const end=video.buffered.end(last);
           const start=video.buffered.start(last);
@@ -2616,6 +3784,51 @@ const PLAYER_IDS = [1,2,3,4];
       video.loop=true;
     }
 
+    function startFrameRateTracking(index){
+      if(!RVFC_SUPPORTED) return;
+      const video = videos[index];
+      const state = frameTimingState[index];
+      if(!video || state.rvfcHandle || !hasVideoSource(video)) return;
+      const tick = (_, meta)=>{
+        if(!hasVideoSource(video)){
+          state.rvfcHandle = null;
+          return;
+        }
+        if(Number.isFinite(state.lastMediaTime) && Number.isFinite(meta.mediaTime) && Number.isFinite(meta.presentedFrames) && Number.isFinite(state.lastPresentedFrames)){
+          const deltaTime = meta.mediaTime - state.lastMediaTime;
+          const deltaFrames = meta.presentedFrames - state.lastPresentedFrames;
+          if(deltaTime > 0 && deltaFrames > 0){
+            const fps = deltaFrames / deltaTime;
+            if(Number.isFinite(fps) && fps > 0){
+              const smoothed = state.source === 'rvfc'
+                ? state.fpsEstimate * 0.8 + fps * 0.2
+                : fps;
+              setEstimatedFps(index, smoothed, 'rvfc');
+            }
+          }
+        }
+        state.lastMediaTime = meta.mediaTime;
+        state.lastPresentedFrames = meta.presentedFrames;
+        if(!video.paused && hasVideoSource(video)){
+          state.rvfcHandle = video.requestVideoFrameCallback(tick);
+        }else{
+          state.rvfcHandle = null;
+        }
+      };
+      state.rvfcHandle = video.requestVideoFrameCallback(tick);
+    }
+
+    function stopFrameRateTracking(index){
+      const video = videos[index];
+      const state = frameTimingState[index];
+      if(video && state.rvfcHandle !== null && 'cancelVideoFrameCallback' in video){
+        video.cancelVideoFrameCallback(state.rvfcHandle);
+      }
+      state.rvfcHandle = null;
+      state.lastMediaTime = null;
+      state.lastPresentedFrames = null;
+    }
+
 
     function initVideoMonitoring(video,index){
       applyPlaybackOptimizations(video);
@@ -2624,16 +3837,17 @@ const PLAYER_IDS = [1,2,3,4];
           metrics[index].lastResolution=`${video.videoWidth}x${video.videoHeight}`;
         }
         metrics[index].playbackRate=video.playbackRate||1;
+        startFrameRateTracking(index);
         updateMonitorUI(index);
         updateTimelineForPlayer(index,true);
       });
       // Start frame cache + thumbnail strip once fully buffered
       video.addEventListener('canplaythrough',()=>{
-        if(!frameCaches[index]) startFrameCacheBuild(video,index);
+        if(ENABLE_AUTO_FRAME_CACHE && !frameCaches[index]) startFrameCacheBuild(video,index);
         // For longer local files not covered by frame cache, build thumbnail strip in background
         const d=video.duration;
         if(Number.isFinite(d)&&d>FRAME_CACHE_MAX_DURATION&&video._objectURL){
-          if(!thumbStrips[index].frames.length&&!thumbStrips[index].building){
+          if(ENABLE_AUTO_THUMB_STRIP && !thumbStrips[index].frames.length&&!thumbStrips[index].building){
             buildThumbStripBackground(video,index).catch(()=>{});
           }
           if(!wcdStates[index]&&WEBCODECS_SUPPORTED&&video._sourceFile){
@@ -2664,6 +3878,8 @@ const PLAYER_IDS = [1,2,3,4];
         metrics[index].playbackRate=video.playbackRate||1;
         updateMonitorUI(index);
       });
+      video.addEventListener('play',()=>startFrameRateTracking(index));
+      video.addEventListener('pause',()=>stopFrameRateTracking(index));
     }
 
 
@@ -3067,4 +4283,5 @@ const PLAYER_IDS = [1,2,3,4];
         timeDiffValueEl.textContent='-';
         timeDiffDetailEl.textContent='Shown when both players are loaded.';
       }
+      updateDiffLabStatus();
     },1000);
