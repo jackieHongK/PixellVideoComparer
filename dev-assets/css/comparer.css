@@ -464,6 +464,257 @@ body[data-env="dev"] .dev-build-badge {
       outline: none;
       border-color: rgba(0,210,255,0.75);
     }
+    .diff-select-wrap {
+      min-width: 132px;
+    }
+    .diff-threshold-wrap {
+      gap: 8px;
+      min-width: 220px;
+    }
+    .diff-threshold-range {
+      width: 92px;
+      accent-color: #61c7ff;
+      cursor: pointer;
+    }
+    .diff-threshold-value {
+      min-width: 28px;
+      text-align: right;
+      color: #e6f7ff;
+      font-variant-numeric: tabular-nums;
+    }
+    .diff-sync-wrap {
+      gap: 6px;
+      min-width: auto;
+    }
+    .mini-chip-button {
+      height: 22px;
+      min-width: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08);
+      color: #e6f7ff;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0 8px;
+    }
+    .mini-chip-button:hover,
+    .mini-chip-button.active {
+      background: rgba(97,199,255,0.18);
+      border-color: rgba(97,199,255,0.5);
+    }
+    .diff-sync-badge {
+      min-width: 112px;
+      text-align: center;
+      font-size: 11px;
+      color: #eef8ff;
+      font-variant-numeric: tabular-nums;
+    }
+    .top-controls.diff-lab-active .stats-toggle-btn,
+    .top-controls.diff-lab-active #metaToggleBtn {
+      display: none;
+    }
+    .diff-lab-only {
+      display: none;
+    }
+    .top-controls.diff-lab-active .diff-lab-only {
+      display: inline-flex;
+    }
+    .top-controls.diff-lab-active #compareLayoutSelect {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .diff-lab-panel {
+      position: fixed;
+      top: 56px;
+      left: 14px;
+      width: min(360px, calc(100vw - 28px));
+      max-height: calc(100vh - 110px);
+      overflow: auto;
+      z-index: 12;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,170,255,0.28);
+      background: rgba(9, 14, 24, 0.88);
+      color: #d6ecff;
+      box-shadow: 0 10px 32px rgba(0,0,0,0.32);
+      backdrop-filter: blur(10px);
+    }
+    .diff-lab-panel.visible {
+      display: flex;
+    }
+    .diff-lab-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      font-size: 11px;
+      color: #8ccfff;
+    }
+    .diff-lab-header strong {
+      font-size: 14px;
+      color: #eef8ff;
+      letter-spacing: 0.02em;
+    }
+    .diff-lab-body {
+      display: grid;
+      gap: 12px;
+    }
+    .diff-guide-card {
+      display: grid;
+      gap: 7px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .diff-guide-card.active {
+      border-color: rgba(97,199,255,0.55);
+      background: rgba(97,199,255,0.08);
+    }
+    .diff-guide-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #eef8ff;
+    }
+    .diff-guide-text,
+    .diff-guide-list {
+      font-size: 11px;
+      line-height: 1.55;
+      color: #b9dfff;
+    }
+    .diff-guide-list {
+      display: grid;
+      gap: 4px;
+    }
+    .diff-guide-list span {
+      display: block;
+    }
+    .diff-section {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .diff-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #eef8ff;
+      letter-spacing: 0.02em;
+    }
+    .diff-status-grid,
+    .diff-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .diff-status-card,
+    .diff-stat-card {
+      display: grid;
+      gap: 4px;
+      min-height: 74px;
+      align-content: start;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .diff-status-label,
+    .diff-stat-label {
+      font-size: 10px;
+      color: #93cfff;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .diff-status-card strong,
+    .diff-stat-card strong {
+      font-size: 14px;
+      color: #f5fbff;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .diff-status-card small,
+    .diff-stat-card small {
+      font-size: 10px;
+      color: #9fc2dc;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .diff-inspector-grid {
+      display: grid;
+      gap: 6px;
+    }
+    .diff-inspector-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px;
+    }
+    .diff-inspector-row span {
+      color: #8fc8f0;
+    }
+    .diff-inspector-row strong {
+      color: #eef8ff;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .scope-block {
+      display: grid;
+      gap: 6px;
+    }
+    .scope-title {
+      font-size: 11px;
+      color: #93cfff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .scope-block canvas {
+      display: block;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(3,7,14,0.86);
+    }
+    .diff-variant-list {
+      display: grid;
+      gap: 6px;
+    }
+    .diff-variant-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px;
+    }
+    .diff-variant-item strong {
+      color: #eef8ff;
+      font-weight: 600;
+    }
+    .diff-variant-item span {
+      color: #9fc2dc;
+      font-size: 10px;
+    }
     .playlist-overlay {
       position: fixed;
       top: 64px;
@@ -1167,6 +1418,29 @@ body[data-env="dev"] .dev-build-badge {
       pointer-events: none;
       object-fit: contain;
     }
+    .diff-view-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 4;
+      display: none;
+      pointer-events: none;
+      object-fit: contain;
+      mix-blend-mode: normal;
+    }
+    .roi-selection-box {
+      position: absolute;
+      border: 1px solid rgba(255,255,255,0.9);
+      background: rgba(97,199,255,0.14);
+      box-shadow: 0 0 0 1px rgba(97,199,255,0.35);
+      z-index: 16;
+      pointer-events: none;
+      display: none;
+    }
+    .video-box.roi-armed {
+      cursor: crosshair;
+    }
 
     /* Timeline thumbnail popup on hover */
     .playbar { position: relative; }
@@ -1184,8 +1458,6 @@ body[data-env="dev"] .dev-build-badge {
     }
     .timeline-thumb-canvas {
       display: block;
-      width: 160px;
-      height: 90px;
       background: #000;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 3px;
@@ -1310,6 +1582,10 @@ body[data-env="dev"] .dev-build-badge {
       color: #7ecfff !important;
     }
 
+    body.diff-lab-mode .video-column.extra-player {
+      display: none !important;
+    }
+
     /* --- Metadata comparison panel --- */
     .meta-panel {
       position: fixed;
@@ -1385,6 +1661,7 @@ body[data-env="dev"] .dev-build-badge {
     .meta-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       font-size: 12px;
       font-family: 'Inter', monospace;
     }
@@ -1400,11 +1677,13 @@ body[data-env="dev"] .dev-build-badge {
       color: rgba(140,200,255,0.8);
       letter-spacing: 0.06em;
       border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-right: 1px solid rgba(255,255,255,0.07);
       white-space: nowrap;
     }
+    .meta-table thead th:last-child { border-right: none; }
     .meta-table thead .mt-field-header {
       text-align: left;
-      min-width: 120px;
+      width: 140px;
       color: rgba(255,255,255,0.35);
     }
     .meta-table .mt-section td {
@@ -1419,20 +1698,25 @@ body[data-env="dev"] .dev-build-badge {
     }
     .meta-table .mt-row td {
       padding: 5px 14px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      white-space: nowrap;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-right: 1px solid rgba(255,255,255,0.07);
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      vertical-align: top;
     }
+    .meta-table .mt-row td:last-child { border-right: none; }
     .mt-label {
       color: rgba(200,220,240,0.55);
       font-size: 11px;
       font-weight: 500;
-      min-width: 120px;
+      width: 140px;
     }
     .mt-val {
       color: rgba(230,245,255,0.88);
       text-align: center;
       font-variant-numeric: tabular-nums;
-      min-width: 130px;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .mt-val.mt-empty { color: rgba(255,255,255,0.2); }
     /* Diff cell — amber shading when value differs across players */
