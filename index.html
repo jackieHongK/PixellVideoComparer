@@ -135,6 +135,13 @@
     </div>
   
     <div class="top-controls">
+      <label class="layout-select-wrap" for="viewerModeSelect">
+        <span class="layout-select-label">Viewer</span>
+        <select class="layout-select" id="viewerModeSelect" aria-label="Select viewer mode">
+          <option value="visual">Visual Compare</option>
+          <option value="diff-lab">Diff Lab</option>
+        </select>
+      </label>
       <label class="layout-select-wrap" for="compareLayoutSelect">
         <span class="layout-select-label">Layout</span>
         <select class="layout-select" id="compareLayoutSelect" aria-label="Select comparison layout">
@@ -144,6 +151,40 @@
           <option value="1x3">1x3</option>
         </select>
       </label>
+      <label class="layout-select-wrap diff-select-wrap diff-lab-only" for="diffModeSelect">
+        <span class="layout-select-label">Diff</span>
+        <select class="layout-select" id="diffModeSelect" aria-label="Select difference view">
+          <option value="off">Off</option>
+          <option value="abs">Abs Diff</option>
+          <option value="signed">Signed Diff</option>
+          <option value="heatmap">Heatmap</option>
+          <option value="threshold">Thresholded Diff</option>
+          <option value="ssim">SSIM Map</option>
+          <option value="flicker">Flicker View</option>
+          <option value="edge">Edge Diff</option>
+          <option value="chroma">Chroma Diff</option>
+        </select>
+      </label>
+      <label class="layout-select-wrap diff-threshold-wrap diff-lab-only" for="diffThresholdRange">
+        <span class="layout-select-label">Threshold</span>
+        <input id="diffThresholdRange" class="diff-threshold-range" type="range" min="0" max="255" value="24" step="1" aria-label="Adjust diff threshold" />
+        <span class="diff-threshold-value" id="diffThresholdValue">24</span>
+      </label>
+      <div class="layout-select-wrap diff-lab-only diff-sync-wrap" aria-label="P2 time shift controls">
+        <button class="mini-chip-button" id="p2OffsetBack10Btn" type="button" aria-label="Shift P2 backward by 10 frames">-10f</button>
+        <button class="mini-chip-button" id="p2OffsetBack1Btn" type="button" aria-label="Shift P2 backward by 1 frame">-1f</button>
+        <span class="diff-sync-badge" id="p2OffsetBadge">P2 0f / 0.000s</span>
+        <button class="mini-chip-button" id="p2OffsetForward1Btn" type="button" aria-label="Shift P2 forward by 1 frame">+1f</button>
+        <button class="mini-chip-button" id="p2OffsetForward10Btn" type="button" aria-label="Shift P2 forward by 10 frames">+10f</button>
+        <button class="mini-chip-button" id="p2OffsetResetBtn" type="button" aria-label="Reset P2 time shift">Reset</button>
+      </div>
+      <label class="layout-select-wrap diff-select-wrap diff-lab-only" for="p2VariantSelect">
+        <span class="layout-select-label">Variant</span>
+        <select class="layout-select" id="p2VariantSelect" aria-label="Select saved P2 variant">
+          <option value="">Current P2</option>
+        </select>
+      </label>
+      <button class="capture-button diff-lab-only" id="roiCaptureBtn" type="button" aria-label="Capture ROI from P1, P2 and diff">ROI Capture</button>
       <button class="capture-button stats-toggle-btn" id="statsToggleBtn" type="button" aria-label="Toggle stats overlay">Stats</button>
       <button class="capture-button stats-toggle-btn" id="metaToggleBtn" type="button" aria-label="Toggle metadata panel">Info</button>
       <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
@@ -152,6 +193,10 @@
         <div class="help-tooltip">
           ⎵ Space: Play/Pause<br>
           R: Time Sync<br>
+          Diff Lab: align P2 with +/-1f or +/-10f first<br>
+          Flicker / Signed Diff: best for sync check<br>
+          Hover P1/P2: inspect RGB, luma, and delta<br>
+          ROI Capture: drag on P2 to save P1/P2/diff cutouts<br>
           0~9: Jump to 0-90% of timeline<br>
           - : Jump to latest buffered segment<br>
           S: Toggle left/right 50% crop<br>
@@ -165,6 +210,75 @@
         </div>
       </div>
     </div>
+
+    <aside class="diff-lab-panel" id="diffLabPanel" aria-hidden="true">
+      <div class="diff-lab-header">
+        <strong>Diff Lab Guide</strong>
+        <span>P1 = original, P2 = result</span>
+      </div>
+      <div class="diff-lab-body" id="diffLabBody"></div>
+      <section class="diff-section">
+        <div class="diff-section-title">Sync Workflow</div>
+        <div class="diff-guide-text" id="diffWorkflowText"></div>
+      </section>
+      <section class="diff-section">
+        <div class="diff-section-title">Frame Sync</div>
+        <div class="diff-status-grid">
+          <div class="diff-status-card">
+            <span class="diff-status-label">Master</span>
+            <strong id="diffMasterStatus">P1</strong>
+            <small id="diffMasterFps">fps -</small>
+          </div>
+          <div class="diff-status-card">
+            <span class="diff-status-label">P2 Offset</span>
+            <strong id="diffOffsetStatus">0f</strong>
+            <small id="diffOffsetSeconds">0.000 sec</small>
+          </div>
+          <div class="diff-status-card">
+            <span class="diff-status-label">Current Drift</span>
+            <strong id="diffDriftStatus">-</strong>
+            <small id="diffDriftHint">Use +/- frame offset before reading diff.</small>
+          </div>
+        </div>
+      </section>
+      <section class="diff-section">
+        <div class="diff-section-title">Hover Inspector</div>
+        <div class="diff-guide-text" id="diffInspectorHelp">Move over P1 or P2. Inspector uses the same compare frame that feeds the active diff mode.</div>
+        <div class="diff-inspector-grid" id="diffInspectorPanel">
+          <div class="diff-inspector-row"><span>Coord</span><strong id="inspectorCoord">-</strong></div>
+          <div class="diff-inspector-row"><span>P1 RGB</span><strong id="inspectorP1Rgb">-</strong></div>
+          <div class="diff-inspector-row"><span>P2 RGB</span><strong id="inspectorP2Rgb">-</strong></div>
+          <div class="diff-inspector-row"><span>Luma</span><strong id="inspectorLuma">-</strong></div>
+          <div class="diff-inspector-row"><span>Delta</span><strong id="inspectorDelta">-</strong></div>
+        </div>
+      </section>
+      <section class="diff-section">
+        <div class="diff-section-title">Frame Stats</div>
+        <div class="diff-guide-text" id="diffStatsHelp">Frame-level metrics are refreshed from the currently visible compare frame. Threshold hit uses the slider value in Thresholded Diff.</div>
+        <div class="diff-stats-grid" id="diffStatsPanel"></div>
+      </section>
+      <section class="diff-section">
+        <div class="diff-section-title">Scopes</div>
+        <div class="diff-guide-text">Histogram shows luma distribution. Waveform shows how brightness is distributed across the image from left to right.</div>
+        <div class="scope-block">
+          <div class="scope-title">Histogram</div>
+          <canvas id="diffHistogramCanvas" width="320" height="120"></canvas>
+        </div>
+        <div class="scope-block">
+          <div class="scope-title">Waveform</div>
+          <canvas id="diffWaveformCanvas" width="320" height="140"></canvas>
+        </div>
+      </section>
+      <section class="diff-section">
+        <div class="diff-section-title">Saved Variants</div>
+        <div class="diff-guide-text" id="diffVariantHelp">Whenever a new source is loaded into P2, it is saved here. Use the Variant dropdown to swap results while keeping P1 fixed.</div>
+        <div class="diff-variant-list" id="diffVariantList"></div>
+      </section>
+      <section class="diff-section">
+        <div class="diff-section-title">ROI Export</div>
+        <div class="diff-guide-text" id="diffRoiHelp">Press ROI Capture, drag on P2, then the tool saves P1, P2, and active diff cutouts from the same region.</div>
+      </section>
+    </aside>
   
     <!-- Metadata comparison panel -->
     <div class="meta-panel" id="metaPanel" aria-hidden="true">
