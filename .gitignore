@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build / cache
+dist/
+build/
+.cache/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment / secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa*
+id_ed25519*
+id_ecdsa*
+credentials*
+auth.json
+.npmrc
+.netrc
+.aws/
+
+# Codex / Claude local state — must never leave the machine
+.codex/
+.codex-profiles/
+
+# Dashboard runtime data — generated at runtime, contains local paths and PII
+dashboard-data/state.json
+dashboard-data/agent-runtime/
+dashboard-data/runs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo

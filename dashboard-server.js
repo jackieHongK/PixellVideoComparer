@@ -7,11 +7,15 @@ const { spawn } = require("child_process");
 const PORT = Number(process.env.PIXELL_DASHBOARD_PORT || 41731);
 const ROOT = __dirname;
 const STATE_FILE = path.join(ROOT, "dashboard-data", "state.json");
+const STATE_SAMPLE_FILE = path.join(ROOT, "dashboard-data", "state.sample.json");
 const RUNTIME_DIR = path.join(ROOT, "dashboard-data", "agent-runtime");
 const RUN_DIR = path.join(ROOT, "dashboard-data", "runs");
 const CODEX_HOME = path.join(os.homedir(), ".codex");
 const CLAUDE_CACHE = path.join(os.homedir(), "AppData", "Local", "claude-cli-nodejs", "Cache");
-const PROJECT_CACHE_KEY = "C--Users-HJP-Downloads-PJ-pixell-launcher";
+// Claude CLI encodes the project's parent directory into the cache folder name by replacing
+// `:`, `\`, and `/` with `-`. Auto-derive so this works on any machine; allow override via env.
+const PROJECT_CACHE_KEY = process.env.PIXELL_PROJECT_CACHE_KEY
+  || path.dirname(ROOT).replace(/[:\\/]/g, "-");
 
 const runningJobs = new Map();
 
@@ -663,6 +667,9 @@ function cancelTaskRun(taskId) {
 }
 
 function readState() {
+  if (!fs.existsSync(STATE_FILE) && fs.existsSync(STATE_SAMPLE_FILE)) {
+    fs.copyFileSync(STATE_SAMPLE_FILE, STATE_FILE);
+  }
   return JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
 }
 
