@@ -1,8 +1,8 @@
 {
   "meta": {
     "title": "Pixell 작업 대시보드",
-    "workspacePath": "C:\\Users\\HJP\\Downloads\\PJ-pixell-launcher\\PixellVideoComparer",
-    "updatedAt": "2026-04-19T00:01:18.696Z"
+    "workspacePath": "",
+    "updatedAt": "1970-01-01T00:00:00.000Z"
   },
   "agents": [
     {
@@ -14,26 +14,26 @@
       "status": "active",
       "branch": "codex/pixell-ops",
       "loginCommand": ".\\agent-launchers\\start-codex-pixell.cmd",
-      "workspacePath": "C:\\Users\\HJP\\Downloads\\PJ-pixell-launcher\\PixellVideoComparer",
+      "workspacePath": "",
       "notes": "team 워크스페이스용 Codex",
       "runtimeMatch": {
         "planType": "team"
       },
       "codexProfileId": "pixell",
-      "codexHome": "C:\\Users\\HJP\\.codex-profiles\\pixell",
+      "codexHome": "",
       "runtime": {
         "isActive": false,
-        "lastActiveAt": "2026-04-18T14:39:06.348Z",
-        "sessionPath": "C:\\Users\\HJP\\.codex\\sessions\\2026\\04\\18\\rollout-2026-04-18T23-21-16-019da0f7-9fcf-7bb1-8cf8-39827ed55c94.jsonl",
+        "lastActiveAt": null,
+        "sessionPath": "",
         "tokens": {
-          "session": 120035,
-          "total": 2219300,
-          "last": 120035
+          "session": null,
+          "total": null,
+          "last": null
         },
-        "tokenSourceLabel": "Codex 세션 로그",
-        "note": "세션 JSONL에서 실시간 수집 · 프로필 pixell · 요금제 team · cwd c:\\Users\\HJP\\Downloads\\PJ-ytdlp-GUI",
-        "activityLabel": "Built a working first pass of the browser-based `yt-dlp` GUI with a casual, bright English-only UI and a local backend that manages downloa…",
-        "userOrderLabel": "yt-dlp를 사용할때 필요한 GUI를 만들자. 브라우저를 이용할거고, ffmpeg랑 yt-dlp를 여기 하위 경로에다가 새로 설치해서 개발하자. 핵심은 유튜브 영상 링크만 집어넣으면, 다운로드 가능한 영상들의 해상도, 코덱, 오디오 코덱, 컨테이너…",
+        "tokenSourceLabel": "연결 없음",
+        "note": "",
+        "activityLabel": "",
+        "userOrderLabel": "",
         "terminal": {
           "shell": "",
           "pid": null,
@@ -41,14 +41,15 @@
           "command": ""
         },
         "quota": {
-          "planType": "team",
-          "primaryUsedPercent": 47,
-          "primaryRemainingPercent": 53,
-          "primaryResetAt": "2026-04-18T18:05:20.000Z",
-          "secondaryUsedPercent": 31,
-          "secondaryRemainingPercent": 69,
-          "secondaryResetAt": "2026-04-24T03:14:49.000Z"
-        }
+          "planType": null,
+          "primaryUsedPercent": null,
+          "primaryRemainingPercent": null,
+          "primaryResetAt": null,
+          "secondaryUsedPercent": null,
+          "secondaryRemainingPercent": null,
+          "secondaryResetAt": null
+        },
+        "updatedAt": null
       },
       "execution": {
         "runningCount": 0,
@@ -67,26 +68,26 @@
       "status": "active",
       "branch": "codex/personal",
       "loginCommand": ".\\agent-launchers\\start-codex-personal.cmd",
-      "workspacePath": "C:\\Users\\HJP\\Downloads\\PJ-pixell-launcher\\PixellVideoComparer",
+      "workspacePath": "",
       "notes": "plus 워크스페이스용 Codex",
       "runtimeMatch": {
         "planType": "plus"
       },
       "codexProfileId": "personal",
-      "codexHome": "C:\\Users\\HJP\\.codex-profiles\\personal",
+      "codexHome": "",
       "runtime": {
         "isActive": false,
-        "lastActiveAt": "2026-04-18T23:54:50.855Z",
-        "sessionPath": "C:\\Users\\HJP\\.codex\\sessions\\2026\\04\\18\\rollout-2026-04-18T11-04-22-019d9e54-f918-71e1-97bc-d93c53017228.jsonl",
+        "lastActiveAt": null,
+        "sessionPath": "",
         "tokens": {
-          "session": 74827,
-          "total": 21633963,
-          "last": 74827
+          "session": null,
+          "total": null,
+          "last": null
         },
-        "tokenSourceLabel": "Codex 세션 로그",
-        "note": "세션 JSONL에서 실시간 수집 · 프로필 personal · 요금제 plus · cwd C:\\Users\\HJP\\Downloads\\PJ-pixell-launcher",
-        "activityLabel": "지금은 아직 그렇게까지 연결돼 있지 않습니다. 현재 구조는 이겁니다. - 태스크 시작 시 새 “보이는 터미널”이 열리는 게 아님 - 서버가 백그라운드에서 `codex exec` 또는 `claude -p`를 1회 실행 - 그 실행 로그를 파일로 남김 …",
-        "userOrderLabel": "그럼 태스크 하나당 터미널 1개를 신규로 열어서 해당 에이전트에게 작업요청을하는거고, 작업이 완료되면 그 터미널은 종료되고 태스크의 상태값이 바뀐상태로 남아있는건가?",
+        "tokenSourceLabel": "연결 없음",
+        "note": "",
+        "activityLabel": "",
+        "userOrderLabel": "",
         "terminal": {
           "shell": "",
           "pid": null,
@@ -94,14 +95,15 @@
           "command": ""
         },
         "quota": {
-          "planType": "plus",
-          "primaryUsedPercent": 26,
-          "primaryRemainingPercent": 74,
-          "primaryResetAt": "2026-04-19T03:50:28.000Z",
-          "secondaryUsedPercent": 39,
-          "secondaryRemainingPercent": 61,
-          "secondaryResetAt": "2026-04-24T12:43:48.000Z"
-        }
+          "planType": null,
+          "primaryUsedPercent": null,
+          "primaryRemainingPercent": null,
+          "primaryResetAt": null,
+          "secondaryUsedPercent": null,
+          "secondaryRemainingPercent": null,
+          "secondaryResetAt": null
+        },
+        "updatedAt": null
       },
       "execution": {
         "runningCount": 0,
@@ -120,26 +122,26 @@
       "status": "active",
       "branch": "claude/dev-qa",
       "loginCommand": ".\\agent-launchers\\start-claude.cmd",
-      "workspacePath": "C:\\Users\\HJP\\Downloads\\PJ-pixell-launcher\\PixellVideoComparer",
+      "workspacePath": "",
       "notes": "디자인과 구현, QA, 최종 반영을 담당",
       "runtime": {
         "isActive": false,
-        "lastActiveAt": "2026-04-18T23:34:53.525Z",
-        "sessionPath": "C:\\Users\\HJP\\AppData\\Local\\claude-cli-nodejs\\Cache\\C--Users-HJP-Downloads-PJ-pixell-launcher\\mcp-logs-claude-ai-Atlassian\\2026-04-18T23-34-51-295Z.jsonl",
+        "lastActiveAt": null,
+        "sessionPath": "",
         "tokens": {
           "session": null,
           "total": null,
           "last": null
         },
-        "tokenSourceLabel": "Claude 활동 로그",
-        "note": "새 Claude 세션",
-        "activityLabel": "세션 시작",
+        "tokenSourceLabel": "연결 없음",
+        "note": "",
+        "activityLabel": "",
         "userOrderLabel": "",
         "terminal": {
-          "title": "Claude",
-          "command": "claude.exe",
-          "shell": "PowerShell",
-          "pid": 0
+          "shell": "",
+          "pid": null,
+          "title": "",
+          "command": ""
         },
         "quota": {
           "planType": null,
@@ -150,17 +152,13 @@
           "secondaryRemainingPercent": null,
           "secondaryResetAt": null
         },
-        "updatedAt": "2026-04-19T08:57:19.7374911+09:00"
+        "updatedAt": null
       },
       "execution": {
-        "runningCount": 1,
+        "runningCount": 0,
         "queuedCount": 0,
-        "runningTaskIds": [
-          "task-claude-design-pass"
-        ],
-        "runningTaskTitles": [
-          "대시보드 디자인 리디자인"
-        ],
+        "runningTaskIds": [],
+        "runningTaskTitles": [],
         "queuedTaskTitles": []
       }
     }
@@ -230,22 +228,17 @@
       "reviewPrompt": "제안이 실제로 대시보드 연동에 바로 쓰일 수준인지, 필드명과 경로가 구체적인지 확인",
       "releaseStatus": "not_applicable",
       "execution": {
-        "mode": "idle",
         "running": false,
+        "lastResult": null,
         "lastRunAt": null,
-        "lastOutput": "",
-        "lastIssue": "",
-        "qaSummary": "",
-        "lastLogPath": "",
-        "processId": null,
-        "processCommand": ""
+        "logPath": ""
       },
       "tags": [
         "Claude",
         "토큰",
         "런타임"
       ],
-      "updatedAt": "2026-04-19T00:54:52.519Z"
+      "updatedAt": null
     },
     {
       "id": "task-1776506445208",
@@ -264,23 +257,16 @@
       "reviewPrompt": "결과가 실제 의사결정에 보조 자료로 쓸 만큼 깔끔한지 확인하라.",
       "releaseStatus": "not_released",
       "execution": {
-        "mode": "idle",
         "running": false,
+        "lastResult": null,
         "lastRunAt": null,
-        "lastOutput": "",
-        "lastIssue": "",
-        "qaSummary": "",
-        "lastLogPath": "",
-        "processId": null,
-        "processCommand": ""
+        "logPath": ""
       },
       "tags": [],
-      "updatedAt": "2026-04-18T23:42:41.832Z",
+      "updatedAt": null,
       "dependencyState": {
-        "blocked": false,
-        "blockerIds": [],
-        "blockerTitles": [],
-        "ready": true
+        "satisfied": true,
+        "missing": []
       }
     },
     {
@@ -300,26 +286,19 @@
       "reviewPrompt": "이 작업 결과가 실제 인터뷰와 메시지 정렬에 바로 쓰일 수 있는지 확인하라.",
       "releaseStatus": "not_applicable",
       "execution": {
-        "mode": "idle",
         "running": false,
-        "lastRunAt": "2026-04-18T10:01:14.508Z",
-        "lastOutput": "",
-        "lastIssue": "운영자가 실행을 취소함",
-        "qaSummary": "",
-        "lastLogPath": "",
-        "processId": null,
-        "processCommand": ""
+        "lastResult": null,
+        "lastRunAt": null,
+        "logPath": ""
       },
       "tags": [
         "전략",
         "ICP"
       ],
-      "updatedAt": "2026-04-19T00:12:05.406Z",
+      "updatedAt": null,
       "dependencyState": {
-        "blocked": false,
-        "blockerIds": [],
-        "blockerTitles": [],
-        "ready": true
+        "satisfied": true,
+        "missing": []
       },
       "operatorComment": ""
     },
@@ -340,26 +319,19 @@
       "reviewPrompt": "수정된 디자인이 DESIGN.md의 핵심 원칙을 따르는지 검토하라. 모바일과 데스크톱에서 구조가 무너지지 않는지도 확인하라.",
       "releaseStatus": "not_released",
       "execution": {
-        "mode": "idle",
         "running": false,
-        "lastRunAt": "2026-04-19T00:04:27.663Z",
-        "lastOutput": "You've hit your limit · resets 12pm (Asia/Seoul)",
-        "lastIssue": "You've hit your limit · resets 12pm (Asia/Seoul)",
-        "qaSummary": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":56889,\"duration_api_ms\":56481,\"num_turns\":6,\"result\":\"```json\\n{\\\"result\\\":\\\"fail\\\",\\\"summary\\\":\\\"CSS 토큰·색상 변경은 DESIGN.md 표준 팔레트와 부합하나, 폰트 패밀리·웨이트 및 모바일 대응에서 핵심 원칙 위반이 확인됨\\\",\\\"issues\\\":[\\\"font-weight 700 위반: DESIGN.md는 헤딩/내비에 Aeonik Pro weight 500을 명시하며 '절대 bold(700) 사용 금지'를 규정. GNB 타이틀(16px/700)과 메트릭 숫자(38px/700)가 이를 어김. Inter 사용 컨텍스트라도 디스플레이 역할 요소에 700 적용은 설계 원칙 위반\\\",\\\"폰트 패밀리 미적용: DESIGN.md는 모든 디스플레이·내…",
-        "lastLogPath": "./dashboard-data/runs/task-claude-design-pass-run.log",
-        "processId": null,
-        "processCommand": "C:\\Users\\HJP\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe -p --permission-mode bypassPermissions --output-format text DESIGN.md를 참고해 dashboard.html, dashboard-assets/dashboard.css, dashboard-assets/dashboard.js의 UI 표현을 리디자인하라. Revolut 계열의 절제된 흑백 중심 톤, 큰 타이포, pill 버튼, zero shadow 철학을 따르되 현재 제품 맥락에 맞게 적용하라. 기능은 유지하고 시각 설계와 정보 우선순위만 개선하라."
+        "lastResult": null,
+        "lastRunAt": null,
+        "logPath": ""
       },
       "tags": [
         "디자인",
         "Claude"
       ],
-      "updatedAt": "2026-04-19T00:04:29.754Z",
+      "updatedAt": null,
       "dependencyState": {
-        "blocked": false,
-        "blockerIds": [],
-        "blockerTitles": [],
-        "ready": true
+        "satisfied": true,
+        "missing": []
       }
     },
     {
@@ -379,26 +351,19 @@
       "reviewPrompt": "수정 후 실제 사용자가 설명 없이 첫 비교를 시작할 수 있는지 점검하라.",
       "releaseStatus": "not_released",
       "execution": {
-        "mode": "idle",
         "running": false,
+        "lastResult": null,
         "lastRunAt": null,
-        "lastOutput": "",
-        "lastIssue": "",
-        "qaSummary": "",
-        "lastLogPath": "",
-        "processId": null,
-        "processCommand": ""
+        "logPath": ""
       },
       "tags": [
         "UX",
         "온보딩"
       ],
-      "updatedAt": "2026-04-18T07:25:00.000Z",
+      "updatedAt": null,
       "dependencyState": {
-        "blocked": false,
-        "blockerIds": [],
-        "blockerTitles": [],
-        "ready": true
+        "satisfied": true,
+        "missing": []
       }
     }
   ],
@@ -448,127 +413,6 @@
       "hiddenContext": "Codex 전략 작업의 기준 문서"
     }
   ],
-  "history": [
-    {
-      "id": "history-1776557069754-2812e5",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "fail",
-      "summary": "You've hit your limit · resets 12pm (Asia/Seoul)",
-      "logPath": "./dashboard-data/runs/task-claude-design-pass-run.log",
-      "createdAt": "2026-04-19T00:04:29.754Z"
-    },
-    {
-      "id": "history-1776556991542-c3fe34",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "qa",
-      "result": "fail",
-      "summary": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":56889,\"duration_api_ms\":56481,\"num_turns\":6,\"result\":\"```json\\n{\\\"result\\\":\\\"fail\\\",\\\"s…",
-      "logPath": "./dashboard-data/runs/task-claude-design-pass-qa.log",
-      "createdAt": "2026-04-19T00:03:11.542Z"
-    },
-    {
-      "id": "history-1776556893443-40966c",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "pass",
-      "summary": "실행 완료, 검토 단계로 이동",
-      "logPath": "./dashboard-data/runs/task-claude-design-pass-run.log",
-      "createdAt": "2026-04-19T00:01:33.443Z"
-    },
-    {
-      "id": "history-1776556534754-905f15",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "qa",
-      "result": "fail",
-      "summary": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"api_error_status\":null,\"duration_ms\":35515,\"duration_api_ms\":35441,\"num_turns\":5,\"result\":\"```json\\n{\\\"result\\\":\\\"fail\\\",\\\"s…",
-      "logPath": "./dashboard-data/runs/task-claude-design-pass-qa.log",
-      "createdAt": "2026-04-18T23:55:34.754Z"
-    },
-    {
-      "id": "history-1776556281699-e0776e",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "pass",
-      "summary": "실행 완료, 검토 단계로 이동",
-      "logPath": "./dashboard-data/runs/task-claude-design-pass-run.log",
-      "createdAt": "2026-04-18T23:51:21.699Z"
-    },
-    {
-      "id": "history-1776555971525-86ef71",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "cancelled",
-      "summary": "운영자가 실행을 취소함",
-      "logPath": "",
-      "createdAt": "2026-04-18T23:46:11.525Z"
-    },
-    {
-      "id": "history-1776555971522-23216c",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "cancelled",
-      "summary": "운영자가 실행을 취소함",
-      "logPath": "",
-      "createdAt": "2026-04-18T23:46:11.522Z"
-    },
-    {
-      "id": "history-1776555969569-1588d4",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "cancelled",
-      "summary": "운영자가 실행을 취소함",
-      "logPath": "",
-      "createdAt": "2026-04-18T23:46:09.569Z"
-    },
-    {
-      "id": "history-1776555969568-056d5d",
-      "taskId": "task-claude-design-pass",
-      "taskTitle": "대시보드 디자인 리디자인",
-      "agentId": "claude",
-      "ownerId": "claude",
-      "stage": "run",
-      "result": "cancelled",
-      "summary": "운영자가 실행을 취소함",
-      "logPath": "",
-      "createdAt": "2026-04-18T23:46:09.568Z"
-    },
-    {
-      "id": "history-1776555967055-371a1f",
-      "taskId": "task-icp-decision",
-      "taskTitle": "초기 ICP 확정",
-      "agentId": "codex_pixell",
-      "ownerId": "codex_pixell",
-      "stage": "run",
-      "result": "cancelled",
-      "summary": "운영자가 실행을 취소함",
-      "logPath": "",
-      "createdAt": "2026-04-18T23:46:07.055Z"
-    }
-  ],
-  "telemetryUpdatedAt": "2026-04-19T00:01:18.696Z"
+  "history": [],
+  "telemetryUpdatedAt": null
 }
