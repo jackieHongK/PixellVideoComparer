@@ -28,7 +28,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Pages
+        # `enablement: true` auto-enables Pages on the repo if it isn't already.
+        # Without this, switching the source to "GitHub Actions" via the UI sometimes
+        # leaves Pages in a half-configured state and the URL serves 404.
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Ensure .nojekyll inside artifact
+        # Keep Jekyll from filtering files (e.g. anything starting with `_`).
+        run: touch web/.nojekyll
 
       - name: Upload artifact (web/)
         uses: actions/upload-pages-artifact@v3
