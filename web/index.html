@@ -3,14 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HLS Real-time Comparison Viewer DEV QA</title>
+  <title>Pixell Video Comparer</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
-  <script src="./dev-assets/vendor/mediainfo.umd.min.js"></script>
-  <link rel="stylesheet" href="./dev-assets/css/comparer.css" />
+  <script src="./assets/vendor/mediainfo.umd.min.js"></script>
+  <link rel="stylesheet" href="./assets/css/comparer.css" />
 </head>
-<body data-env="dev">
-  <div class="dev-build-badge" aria-label="development build">DEV QA</div>
+<body>
+  <div class="file-protocol-warning" id="fileProtocolWarning" role="alert" aria-hidden="true">
+    <div class="file-protocol-warning-inner">
+      <strong>⚠ This page is open via <code>file://</code></strong>
+      <p>
+        Browser security blocks WebAssembly, Workers, and <code>fetch()</code> on the <code>file://</code> origin.
+        That means <b>ProRes transcoding (FFmpeg)</b>, <b>MediaInfo metadata</b>, and remote URL loading <b>will not work</b>.
+      </p>
+      <p>
+        Serve the folder over HTTP instead — on Windows, run <code>start-comparer.cmd</code> (added to the repo)
+        or any of these in this folder:
+      </p>
+      <pre>python -m http.server 8765
+# or
+npx serve -l 8765 .</pre>
+      <p>Then open <code>http://localhost:8765/comparer_dev_qa.html</code>.</p>
+      <button type="button" id="dismissFileProtocolWarning" class="file-protocol-dismiss">Dismiss</button>
+    </div>
+  </div>
   <div class="app">
       <div class="grid">
         <div class="video-column">
@@ -38,6 +55,10 @@
               <span class="time-current">00:00</span>
               <span class="time-sep">/</span>
               <span class="time-total">00:00</span>
+            </div>
+            <div class="playbar-meta">
+              <button class="playbar-meta-btn playbar-speed" type="button" aria-haspopup="true" aria-label="Playback speed">1.0×</button>
+              <button class="playbar-meta-btn playbar-zoom" type="button" aria-haspopup="true" aria-label="Zoom level">100%</button>
             </div>
             <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
@@ -69,6 +90,10 @@
               <span class="time-sep">/</span>
               <span class="time-total">00:00</span>
             </div>
+            <div class="playbar-meta">
+              <button class="playbar-meta-btn playbar-speed" type="button" aria-haspopup="true" aria-label="Playback speed">1.0×</button>
+              <button class="playbar-meta-btn playbar-zoom" type="button" aria-haspopup="true" aria-label="Zoom level">100%</button>
+            </div>
             <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
         </div>
@@ -98,6 +123,10 @@
               <span class="time-current">00:00</span>
               <span class="time-sep">/</span>
               <span class="time-total">00:00</span>
+            </div>
+            <div class="playbar-meta">
+              <button class="playbar-meta-btn playbar-speed" type="button" aria-haspopup="true" aria-label="Playback speed">1.0×</button>
+              <button class="playbar-meta-btn playbar-zoom" type="button" aria-haspopup="true" aria-label="Zoom level">100%</button>
             </div>
             <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
@@ -129,13 +158,24 @@
               <span class="time-sep">/</span>
               <span class="time-total">00:00</span>
             </div>
+            <div class="playbar-meta">
+              <button class="playbar-meta-btn playbar-speed" type="button" aria-haspopup="true" aria-label="Playback speed">1.0×</button>
+              <button class="playbar-meta-btn playbar-zoom" type="button" aria-haspopup="true" aria-label="Zoom level">100%</button>
+            </div>
             <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
         </div>
       </div>
     </div>
   
-    <div class="top-controls">
+    <div class="top-controls collapsed" id="topControls">
+      <div class="dev-build-badge" aria-label="development build">DEV QA</div>
+      <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+      <div class="top-controls-items">
       <label class="layout-select-wrap" for="viewerModeSelect">
         <span class="layout-select-label">Viewer</span>
         <select class="layout-select" id="viewerModeSelect" aria-label="Select viewer mode">
@@ -186,8 +226,19 @@
         </select>
       </label>
       <button class="capture-button diff-lab-only" id="roiCaptureBtn" type="button" aria-label="Capture ROI from P1, P2 and diff">ROI Capture</button>
+      <label class="layout-select-wrap" for="transcodeQualitySelect" title="Quality for in-browser ProRes/codec transcoding">
+        <span class="layout-select-label">Transcode</span>
+        <select class="layout-select" id="transcodeQualitySelect" aria-label="Transcode quality">
+          <option value="visual-lossless">Visual Lossless</option>
+          <option value="lossless-h264">Lossless H.264 (CRF 0)</option>
+          <option value="vp9-444-hq">VP9 4:4:4 HQ (CRF 10)</option>
+          <option value="lossless-vp9">Lossless VP9 4:4:4 (huge memory)</option>
+          <option value="proxy">Fast Proxy 1280p</option>
+        </select>
+      </label>
       <button class="capture-button stats-toggle-btn" id="statsToggleBtn" type="button" aria-label="Toggle stats overlay">Stats</button>
       <button class="capture-button stats-toggle-btn" id="metaToggleBtn" type="button" aria-label="Toggle metadata panel">Info</button>
+      <button class="capture-button stats-toggle-btn" id="scopesToggleBtn" type="button" aria-label="Toggle color scopes panel">Scopes</button>
       <button class="capture-button" id="captureStillButton" type="button" aria-label="Save current frame">Capture</button>
       <div class="help">
         <div class="help-icon">?</div>
@@ -209,6 +260,7 @@
           C: Save current frame as PNG<br>
           🖱 Wheel: Zoom in/out
         </div>
+      </div>
       </div>
     </div>
 
@@ -281,6 +333,66 @@
       </section>
     </aside>
   
+    <!-- Color scopes panel (DaVinci Resolve-style) -->
+    <aside class="scopes-panel" id="scopesPanel" aria-hidden="true">
+      <div class="scopes-panel-header">
+        <span class="scopes-panel-title">Color Scopes</span>
+        <div class="scopes-panel-controls">
+          <label class="scopes-source-wrap" for="scopesSourceSelect">
+            <span>Source</span>
+            <select class="scopes-source-select" id="scopesSourceSelect" aria-label="Scope source player">
+              <option value="0">P1</option>
+              <option value="1">P2</option>
+              <option value="2">P3</option>
+              <option value="3">P4</option>
+            </select>
+          </label>
+          <label class="scopes-quality-wrap" for="scopesQualitySelect">
+            <span>Quality</span>
+            <select class="scopes-quality-select" id="scopesQualitySelect" aria-label="Scope sampling quality">
+              <option value="fast">Fast</option>
+              <option value="balanced" selected>Balanced</option>
+              <option value="full">Full</option>
+            </select>
+          </label>
+          <button class="scopes-panel-close" id="scopesPanelClose" type="button" aria-label="Close scopes panel">×</button>
+        </div>
+      </div>
+      <div class="scopes-grid">
+        <div class="scope-card" data-scope="waveform-luma">
+          <div class="scope-card-head"><strong>Waveform · Luma</strong><span>0–255 IRE</span></div>
+          <canvas id="scopeWaveformLuma" width="320" height="180"></canvas>
+        </div>
+        <div class="scope-card" data-scope="parade-rgb">
+          <div class="scope-card-head"><strong>RGB Parade</strong><span>R / G / B</span></div>
+          <canvas id="scopeParadeRGB" width="360" height="180"></canvas>
+        </div>
+        <div class="scope-card" data-scope="parade-ycbcr">
+          <div class="scope-card-head"><strong>YCbCr Parade</strong><span>Y / Cb / Cr</span></div>
+          <canvas id="scopeParadeYCbCr" width="360" height="180"></canvas>
+        </div>
+        <div class="scope-card" data-scope="vectorscope">
+          <div class="scope-card-head"><strong>Vectorscope</strong><span>Cb-Cr · I-line</span></div>
+          <canvas id="scopeVectorscope" width="220" height="220"></canvas>
+        </div>
+        <div class="scope-card" data-scope="histogram-rgb">
+          <div class="scope-card-head"><strong>Histogram</strong><span>R · G · B · Luma</span></div>
+          <canvas id="scopeHistogramRGB" width="320" height="180"></canvas>
+        </div>
+        <div class="scope-card" data-scope="waveform-rgb">
+          <div class="scope-card-head"><strong>Waveform · RGB Overlay</strong><span>Stacked R/G/B</span></div>
+          <canvas id="scopeWaveformRGB" width="320" height="180"></canvas>
+        </div>
+        <div class="scope-card" data-scope="cie-chroma">
+          <div class="scope-card-head"><strong>Color Hue Map</strong><span>Saturation × Hue</span></div>
+          <canvas id="scopeHueMap" width="220" height="220"></canvas>
+        </div>
+      </div>
+      <div class="scopes-panel-footer">
+        <span id="scopesStatus">Load a video into the selected player to view scopes.</span>
+      </div>
+    </aside>
+
     <!-- Metadata comparison panel -->
     <div class="meta-panel" id="metaPanel" aria-hidden="true">
       <div class="meta-panel-header">
@@ -528,7 +640,7 @@
         </div>
       </div>
     </div>
-  <script src="./dev-assets/js/parse-exr.js"></script>
-  <script src="./dev-assets/js/comparer-app.js"></script>
+  <script src="./assets/js/parse-exr.js"></script>
+  <script src="./assets/js/comparer-app.js"></script>
 </body>
 </html>

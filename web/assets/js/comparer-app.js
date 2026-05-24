@@ -559,6 +559,55 @@ const PLAYER_IDS = [1,2,3,4];
     const metaPanelClose=document.getElementById('metaPanelClose');
     if(metaPanelClose) metaPanelClose.addEventListener('click',toggleMetaPanel);
 
+    // Hamburger menu + color scopes are initialized at the bottom of the script,
+    // after their `const` state objects (scopeState etc.) have been initialized.
+
+
+    // Click-and-drag pan state (replaces the previous cursor-move auto-pan).
+    // Pan only kicks in when the view is zoomed in (zoom > 1).
+    const panState = {
+      active: false,
+      boxIndex: -1,
+      startX: 0,
+      startY: 0,
+      startOriginX: 50,
+      startOriginY: 50,
+      moved: false
+    };
+    document.addEventListener('mousemove', e => {
+      if(!panState.active) return;
+      const box = boxes[panState.boxIndex];
+      if(!box) return;
+      const dx = e.clientX - panState.startX;
+      const dy = e.clientY - panState.startY;
+      if(!panState.moved && Math.hypot(dx, dy) >= 3) panState.moved = true;
+      if(!panState.moved) return;
+      if(!zoomedIn || zoom <= 1) return;
+      const rect = box.getBoundingClientRect();
+      // 1:1 drag-to-screen mapping: dragging the cursor N px should shift the visible image
+      // content by N px on screen. The proportional origin shift for that is dx/(W*(Z-1)).
+      // Drag right ⇒ image follows the cursor right ⇒ origin moves LEFT (negative).
+      const denomZ = Math.max(0.0001, zoom - 1);
+      const xDelta = -(dx / rect.width) * 100 / denomZ;
+      const yDelta = -(dy / rect.height) * 100 / denomZ;
+      const newX = Math.max(0, Math.min(100, panState.startOriginX + xDelta));
+      const newY = Math.max(0, Math.min(100, panState.startOriginY + yDelta));
+      getActivePlayerIndices().forEach(idx => {
+        getTransformTargets(idx).forEach(el => {
+          el.style.transformOrigin = `${newX}% ${newY}%`;
+        });
+      });
+    }, true);
+    document.addEventListener('mouseup', () => {
+      if(!panState.active) return;
+      panState.active = false;
+      boxes.forEach(b => b.classList.remove('panning'));
+      // Restore cursor after a drag ends
+      boxes.forEach(b => {
+        if(!b.classList.contains('loaded')) return;
+        b.style.cursor = zoomedIn ? 'grab' : 'zoom-in';
+      });
+    });
 
     boxes.forEach((box,i)=>{
       const video=videos[i],label=labels[i];
@@ -595,7 +644,7 @@ const PLAYER_IDS = [1,2,3,4];
 
 
       box.addEventListener("mousemove",e=>{
-        handleZoomMove(e,box);
+        // No more cursor-driven pan — keep only the cursor/inspector/ROI updates here.
         updateSyncedCursor(i,e);
         updateDiffInspectorFromEvent(i,e);
         if(i===1) updateRoiSelectionDrag(e);
@@ -607,9 +656,31 @@ const PLAYER_IDS = [1,2,3,4];
         if(!movingToOther) hideSyncedCursor();
         if(i===0 || i===1) clearDiffInspector();
       });
-      box.addEventListener('mousedown',e=>{
-        if(i!==1 || !roiState.armed || viewerMode!=='diff-lab') return;
-        beginRoiSelection(e);
+      box.addEventListener('mousedown', e => {
+        // ROI capture on P2 takes priority
+        if(i===1 && roiState.armed && viewerMode==='diff-lab'){
+          beginRoiSelection(e);
+          return;
+        }
+        if(e.button !== 0) return;                 // left button only
+        if(!box.classList.contains('loaded')) return;
+        if(cropState !== 0) return;                // split-view modes ignore pan
+        // Editable filename label intercepts its own clicks; don't start a pan from there.
+        if(e.target && e.target.classList && e.target.classList.contains('filename-label')) return;
+        panState.active = true;
+        panState.boxIndex = i;
+        panState.startX = e.clientX;
+        panState.startY = e.clientY;
+        panState.moved = false;
+        const el = getTransformTargets(i)[0];
+        const origin = el && el.style.transformOrigin
+          ? el.style.transformOrigin.match(/[\d.]+/g) : null;
+        panState.startOriginX = parseFloat(origin && origin[0] != null ? origin[0] : '50');
+        panState.startOriginY = parseFloat(origin && origin[1] != null ? origin[1] : '50');
+        if(zoomedIn && zoom > 1){
+          box.classList.add('panning');
+          e.preventDefault();
+        }
       });
       box.addEventListener('mouseup',e=>{
         if(i!==1) return;
@@ -620,13 +691,27 @@ const PLAYER_IDS = [1,2,3,4];
         e.preventDefault();
         zoom+=e.deltaY*-0.01;
         zoom=Math.min(Math.max(zoom,ZOOM_MIN),ZOOM_MAX);
+        zoomedIn = zoom > 1;
+        boxes.forEach(b => {
+          if(!b.classList.contains('loaded')) return;
+          b.classList.toggle('zoomed', zoomedIn);
+          b.style.cursor = zoomedIn ? 'grab' : 'zoom-in';
+        });
         updateTransforms();
+        updateZoomDisplay();
       });
       box.addEventListener("click",()=>{
         if(!box.classList.contains("loaded"))return;
-        zoomedIn=!zoomedIn;
-        boxes.forEach(b=>b.style.cursor=zoomedIn?"zoom-out":"zoom-in");
+        // Suppress click that's really the end of a drag-pan.
+        if(panState.moved){ panState.moved = false; return; }
+        zoomedIn = !zoomedIn;
+        boxes.forEach(b => {
+          if(!b.classList.contains('loaded')) return;
+          b.classList.toggle('zoomed', zoomedIn);
+          b.style.cursor = zoomedIn ? 'grab' : 'zoom-in';
+        });
         updateTransforms();
+        updateZoomDisplay();
       });
     });
 
@@ -1188,19 +1273,66 @@ const PLAYER_IDS = [1,2,3,4];
       applyPlaybackOptimizations(video);
       try{ video.load(); }catch(err){}
       scheduleResume(video,{resumeTime,shouldPlay:autoplay});
-      // Codec fallback: MEDIA_ERR_SRC_NOT_SUPPORTED (code 4) → FFmpeg transcode
-      // Skip fallback for HLS manifests — segments not resolvable from blob URL
+      // Codec fallback: MEDIA_ERR_SRC_NOT_SUPPORTED (code 4) → FFmpeg transcode.
+      // Also proactively detect Apple ProRes inside .mov (Chrome/Edge can't play it natively
+      // and often stalls without firing an error event).
       const isManifest=/\.(m3u8?|mpd)$/i.test(file.name);
+      let fallbackTriggered=false;
+      const triggerFallback=(reason)=>{
+        if(fallbackTriggered) return;
+        fallbackTriggered=true;
+        if(isManifest){ console.warn('HLS/DASH manifest as local file — skipping FFmpeg fallback'); return; }
+        console.info(`Codec fallback triggered (${reason}) for`, file.name);
+        handleCodecFallback(file,video,label,box,index).catch(err=>{
+          console.error('Codec fallback failed',err);
+          alert(`Codec fallback failed: ${err.message||err}`);
+        });
+      };
       video.addEventListener('error',function onCodecError(){
         if(video.error && video.error.code===4){
-          if(isManifest){ console.warn('HLS/DASH manifest as local file — skipping FFmpeg fallback'); return; }
-          handleCodecFallback(file,video,label,box,index).catch(err=>{
-            console.error('Codec fallback failed',err);
-            alert(`Codec fallback failed: ${err.message||err}`);
-          });
+          triggerFallback('MEDIA_ERR_SRC_NOT_SUPPORTED');
         }
       },{once:true});
+      // ProRes proactive detection (.mov files): scan first/last 256KB for ProRes FourCCs.
+      // If detected, kick off transcode immediately instead of waiting for a stall.
+      const ext=(file.name.split('.').pop()||'').toLowerCase();
+      // For .mov/.qt we don't yet know if it's ProRes (unplayable) or H.264 (playable).
+      // Mute until either metadata loads cleanly (un-mute) or we decide to transcode (stays muted).
+      // This kills the "audio plays while video is black" window before the fallback fires.
+      if(['mov','qt'].includes(ext)){
+        video._wasMutedByAutoProbe = !video.muted;
+        video.muted = true;
+        const unmute = () => {
+          if(video._wasMutedByAutoProbe){
+            video.muted = false;
+            video._wasMutedByAutoProbe = false;
+          }
+        };
+        video.addEventListener('loadedmetadata', () => {
+          // Only un-mute if the video actually has frames (= browser can decode it).
+          if(!fallbackTriggered && video.videoWidth > 0) unmute();
+        }, { once:true });
+      }
+      if(['mov','qt','mp4','m4v'].includes(ext)){
+        detectProResInMovFile(file).then(isProres=>{
+          if(isProres && !fallbackTriggered){
+            triggerFallback('Apple ProRes detected');
+          }
+        }).catch(()=>{});
+      }
+      // Stall watchdog: if metadata never loads within 4s for a .mov/.mkv/.avi, assume codec is unsupported.
+      if(['mov','qt','mkv','avi','mxf','ts'].includes(ext)){
+        const watchdog=setTimeout(()=>{
+          if(!fallbackTriggered && (!video.readyState || video.readyState < 2) && !video.videoWidth){
+            triggerFallback('metadata stall timeout');
+          }
+        }, 4500);
+        const clearWatchdog=()=>clearTimeout(watchdog);
+        video.addEventListener('loadedmetadata', clearWatchdog, {once:true});
+        video.addEventListener('error', clearWatchdog, {once:true});
+      }
       label.textContent=file.name;
+      label.title=file.name;
       box.classList.add("loaded");
       if(index===1){
         rememberP2Variant({ type:'file', file, name:file.name });
@@ -1239,6 +1371,7 @@ const PLAYER_IDS = [1,2,3,4];
       clearVideoSource(video);
 
       label.textContent = url;
+      label.title = url;
       box.classList.add("loaded");
       resetMetricState(index);
 
@@ -1565,6 +1698,7 @@ const PLAYER_IDS = [1,2,3,4];
       };
       showImage(index);
       label.textContent=source.name;
+      label.title=source.name;
       box.classList.add("loaded");
       if(index===1){
         rememberP2Variant(source.file ? { type:'file', file:source.file, name: source.name } : { type:'url', url: source.url, name: source.name });
@@ -3411,19 +3545,100 @@ const PLAYER_IDS = [1,2,3,4];
       timeline.addEventListener('mouseleave',()=>{ pp.popup.style.display='none'; });
     }
 
-    // --- FFmpeg codec fallback ---
-    function loadFFmpegScript(){
+    // --- FFmpeg codec fallback (v0.12 UMD, single-threaded, no SAB / COOP-COEP needed) ---
+    // v0.12 spawns a Worker internally. When ffmpeg.js is loaded from a CDN, that Worker
+    // can't be constructed from the cross-origin URL (Chrome SecurityError). The fix is to
+    // pre-fetch all FFmpeg assets (core JS, core WASM, and the worker chunk) and serve them
+    // as same-origin Blob URLs via classWorkerURL / coreURL / wasmURL.
+    const FFMPEG_CDN_BASES = [
+      'https://cdn.jsdelivr.net/npm',
+      'https://unpkg.com'
+    ];
+    const FFMPEG_VERSION = '0.12.10';
+    const FFMPEG_CORE_VERSION = '0.12.6';
+    // Worker chunk emitted by the FFmpeg.wasm UMD bundle (filename is stable per version).
+    const FFMPEG_WORKER_CHUNK = '814.ffmpeg.js';
+
+    function loadScriptOnce(url){
       return new Promise((resolve,reject)=>{
-        if(window.FFmpeg){ resolve(); return; }
+        const existing=document.querySelector(`script[data-src="${url}"]`);
+        if(existing){
+          if(existing.dataset.loaded==='1') return resolve();
+          existing.addEventListener('load',()=>resolve());
+          existing.addEventListener('error',()=>reject(new Error('Script load failed: '+url)));
+          return;
+        }
         const s=document.createElement('script');
-        s.src='https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
-        s.onload=resolve;
-        s.onerror=()=>reject(new Error('Failed to load FFmpeg.wasm'));
+        s.src=url;
+        s.dataset.src=url;
+        s.onload=()=>{ s.dataset.loaded='1'; resolve(); };
+        s.onerror=()=>reject(new Error('Script load failed: '+url));
         document.head.appendChild(s);
       });
     }
 
-    async function getFFmpeg(){
+    async function loadFFmpegScript(){
+      if(window.FFmpegWASM && window.FFmpegWASM.FFmpeg) return;
+      let lastErr=null;
+      for(const base of FFMPEG_CDN_BASES){
+        try{
+          await loadScriptOnce(`${base}/@ffmpeg/ffmpeg@${FFMPEG_VERSION}/dist/umd/ffmpeg.js`);
+          if(window.FFmpegWASM && window.FFmpegWASM.FFmpeg) return;
+        }catch(err){ lastErr=err; }
+      }
+      throw lastErr || new Error('Failed to load FFmpeg.wasm script');
+    }
+
+    async function toBlobURL(url, type, onProgress){
+      // Fetch a remote asset and turn it into a same-origin Blob URL so it can be passed
+      // to Worker constructors / WebAssembly.instantiateStreaming() without CORS issues.
+      const resp = await fetch(url);
+      if(!resp.ok) throw new Error(`Fetch ${url} → HTTP ${resp.status}`);
+      const total = Number(resp.headers.get('content-length')) || 0;
+      if(resp.body && typeof resp.body.getReader === 'function' && onProgress){
+        const reader = resp.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while(true){
+          const { done, value } = await reader.read();
+          if(done) break;
+          chunks.push(value);
+          received += value.byteLength;
+          if(total) onProgress(received / total);
+        }
+        const merged = new Uint8Array(received);
+        let off = 0;
+        for(const c of chunks){ merged.set(c, off); off += c.byteLength; }
+        return URL.createObjectURL(new Blob([merged], { type }));
+      }
+      const buf = await resp.arrayBuffer();
+      return URL.createObjectURL(new Blob([buf], { type }));
+    }
+
+    async function fetchFFmpegAssetsAcrossCDNs(onProgress){
+      // Try jsdelivr first; if any asset fails (404 / CORS), retry with unpkg.
+      // We use the ESM build of @ffmpeg/core because v0.12's worker is a module worker
+      // that loads the core via dynamic `import()` (requires an ES module, not UMD).
+      let lastErr = null;
+      for(const base of FFMPEG_CDN_BASES){
+        const coreUrl   = `${base}/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm/ffmpeg-core.js`;
+        const wasmUrl   = `${base}/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm/ffmpeg-core.wasm`;
+        const workerUrl = `${base}/@ffmpeg/ffmpeg@${FFMPEG_VERSION}/dist/umd/${FFMPEG_WORKER_CHUNK}`;
+        try{
+          const [coreBlob, wasmBlob, workerBlob] = await Promise.all([
+            toBlobURL(coreUrl,   'text/javascript'),
+            toBlobURL(wasmUrl,   'application/wasm', onProgress),
+            toBlobURL(workerUrl, 'text/javascript'),
+          ]);
+          return { coreBlob, wasmBlob, workerBlob, base };
+        }catch(err){
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error('Failed to fetch FFmpeg.wasm core assets');
+    }
+
+    async function getFFmpeg(onProgress){
       if(ffmpegInstance && ffmpegReady) return ffmpegInstance;
       if(ffmpegLoading){
         while(ffmpegLoading) await new Promise(r=>setTimeout(r,100));
@@ -3432,14 +3647,15 @@ const PLAYER_IDS = [1,2,3,4];
       ffmpegLoading=true;
       try{
         await loadFFmpegScript();
-        const {createFFmpeg,fetchFile}=window.FFmpeg;
-        // core-st: single-threaded build, no SharedArrayBuffer required (works on file://)
-        ffmpegInstance=createFFmpeg({
-          corePath:'https://unpkg.com/@ffmpeg/core-st@0.11.0/dist/ffmpeg-core.js',
-          log:false
+        const { FFmpeg } = window.FFmpegWASM;
+        const { coreBlob, wasmBlob, workerBlob } = await fetchFFmpegAssetsAcrossCDNs(onProgress);
+        ffmpegInstance = new FFmpeg();
+        // Uncomment when debugging: ffmpegInstance.on('log', ({type, message}) => console.debug('[ffmpeg]', type, message));
+        await ffmpegInstance.load({
+          coreURL: coreBlob,
+          wasmURL: wasmBlob,
+          classWorkerURL: workerBlob,
         });
-        ffmpegInstance._fetchFile=fetchFile;
-        await ffmpegInstance.load();
         ffmpegReady=true;
       }finally{
         ffmpegLoading=false;
@@ -3447,38 +3663,313 @@ const PLAYER_IDS = [1,2,3,4];
       return ffmpegInstance;
     }
 
+    // -----------------------------------------------------------------
+    // Transcode quality presets. The defaults are chosen for visual
+    // fidelity (this is a *comparer* tool — proxy-quality output defeats
+    // the purpose). The user can opt into faster or truly-lossless paths.
+    // -----------------------------------------------------------------
+    function getTranscodeQuality(){
+      try{ return localStorage.getItem('transcodeQuality') || 'visual-lossless'; }
+      catch(e){ return 'visual-lossless'; }
+    }
+    function setTranscodeQuality(v){
+      try{ localStorage.setItem('transcodeQuality', v); }catch(e){}
+    }
+    function buildTranscodeArgs(inputName, outputName, quality, { withAudio = true } = {}){
+      // Common to all paths
+      const head = ['-y', '-fflags', '+discardcorrupt', '-err_detect', 'ignore_err', '-i', inputName, '-map', '0:v:0'];
+      const audio = withAudio ? ['-map', '0:a:0?', '-c:a', 'aac', '-b:a', '192k'] : ['-an'];
+      switch(quality){
+        case 'lossless-h264':
+          // Mathematically lossless H.264, but still 8-bit 4:2:0 (browser limit).
+          // File can be huge — sometimes larger than the ProRes source.
+          return [
+            ...head,
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-qp', '0',
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',
+            ...audio,
+            outputName
+          ];
+        case 'lossless-vp9': {
+          // True lossless: VP9 with 4:4:4 chroma — preserves ProRes chroma & detail.
+          // libvpx-vp9 in lossless mode is *very* memory hungry; for WASM (4GB heap cap)
+          // we force intra-only (`-g 1`), disable tiling/frame parallelism, and use the
+          // fastest cpu-used speed. This trades file size for a chance to actually finish.
+          const vp9Audio = withAudio
+            ? ['-map', '0:a:0?', '-c:a', 'libopus', '-b:a', '192k']
+            : ['-an'];
+          return [
+            ...head,
+            '-c:v', 'libvpx-vp9',
+            '-lossless', '1',
+            '-pix_fmt', 'yuv444p',
+            '-profile:v', '1',
+            '-g', '1',                  // intra-only — no temporal reference buffers
+            '-tile-columns', '0',
+            '-tile-rows', '0',
+            '-frame-parallel', '0',
+            '-row-mt', '0',
+            '-threads', '1',
+            '-deadline', 'realtime',
+            '-cpu-used', '5',
+            ...vp9Audio,
+            outputName.replace(/\.mp4$/i, '.webm')
+          ];
+        }
+        case 'vp9-444-hq': {
+          // VP9 with 4:4:4 chroma at CRF 10 (visually indistinguishable from lossless,
+          // ~10× less memory than -lossless 1). Recommended when -lossless 1 OOMs.
+          const vp9Audio = withAudio
+            ? ['-map', '0:a:0?', '-c:a', 'libopus', '-b:a', '192k']
+            : ['-an'];
+          return [
+            ...head,
+            '-c:v', 'libvpx-vp9',
+            '-crf', '10', '-b:v', '0',
+            '-pix_fmt', 'yuv444p',
+            '-profile:v', '1',
+            '-g', '1',                  // intra-only — keeps memory low
+            '-tile-columns', '0',
+            '-tile-rows', '0',
+            '-frame-parallel', '0',
+            '-row-mt', '0',
+            '-threads', '1',
+            '-deadline', 'good',
+            '-cpu-used', '5',
+            ...vp9Audio,
+            outputName.replace(/\.mp4$/i, '.webm')
+          ];
+        }
+        case 'proxy':
+          // Old fast-proxy defaults: aggressive but smallest file, biggest quality loss.
+          return [
+            ...head,
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-tune', 'fastdecode',
+            '-crf', '24',
+            '-pix_fmt', 'yuv420p',
+            '-vf', "scale='min(1280,iw)':-2",
+            '-movflags', '+faststart',
+            ...audio,
+            outputName
+          ];
+        case 'visual-lossless':
+        default:
+          // Visually lossless (CRF 18) at native resolution — the default for a *comparer*.
+          // veryfast preset is ~10× faster than medium for similar quality at this CRF.
+          return [
+            ...head,
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-crf', '18',
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',
+            ...audio,
+            outputName
+          ];
+      }
+    }
+
     async function handleCodecFallback(file,video,label,box,index){
+      // Chrome decodes the AAC audio track of a ProRes .mov even when the video stream
+      // can't render — so without this, the original file's audio keeps playing during
+      // transcode, the timeline ticks, and the picture stays black. Stop it cold.
+      try{ video.pause(); }catch(e){}
+      try{
+        video.removeAttribute('src');
+        // Detach any MediaSource / HLS pipeline too.
+        video.srcObject = null;
+        video.load();
+      }catch(e){}
+      if(video._objectURL){ try{ URL.revokeObjectURL(video._objectURL); }catch(e){} video._objectURL=null; }
+      updatePlayButtons();
+      updateTimelineForPlayer(index, true);
+
       const overlay=document.createElement('div');
       overlay.className='transcode-overlay';
-      overlay.innerHTML='<div class="transcode-msg">Transcoding<br><span class="transcode-pct">0%</span><br><small>Unsupported codec — converting to H.264</small></div>';
+      const sizeMb = (file.size / (1024*1024));
+      let quality = getTranscodeQuality();
+      const QUALITY_LABELS = {
+        'visual-lossless': 'Visual Lossless · CRF 18',
+        'lossless-h264':   'Lossless H.264 · CRF 0',
+        'vp9-444-hq':      'VP9 4:4:4 HQ · CRF 10',
+        'lossless-vp9':    'Lossless VP9 4:4:4',
+        'proxy':           'Fast Proxy · 1280p · CRF 24'
+      };
+      const qualityLabel = QUALITY_LABELS[quality] || quality;
+      const sizeNote = sizeMb > 500
+        ? `<small>${qualityLabel}<br>Large file (${sizeMb.toFixed(0)} MB) — transcode may take several minutes.</small>`
+        : `<small>${qualityLabel}<br>ProRes only plays in browser after conversion.</small>`;
+      overlay.innerHTML=`<div class="transcode-msg">Loading transcoder…<br><span class="transcode-pct">0%</span><br>${sizeNote}</div>`;
       box.appendChild(overlay);
       const pctEl=overlay.querySelector('.transcode-pct');
+      const msgEl=overlay.querySelector('.transcode-msg');
+      let progressHandler=null;
+      let logHandler=null;
+      const ffLogTail=[];
       try{
-        const ff=await getFFmpeg();
+        const setStatus = (text) => {
+          if(!msgEl) return;
+          msgEl.firstChild && (msgEl.firstChild.nodeValue = text);
+        };
+        const ff = await getFFmpeg((ratio)=>{
+          if(pctEl && Number.isFinite(ratio)) pctEl.textContent=`${Math.round(Math.min(ratio,1)*100)}%`;
+        });
+        setStatus('Transcoding');
+        if(pctEl) pctEl.textContent = '0%';
         const ext=(file.name.split('.').pop()||'mp4').toLowerCase();
         const inputName=`input.${ext}`;
         const outputName='output.mp4';
-        ff.setProgress(({ratio})=>{
-          if(pctEl) pctEl.textContent=`${Math.round(Math.min(ratio,1)*100)}%`;
-        });
-        ff.FS('writeFile',inputName,await ff._fetchFile(file));
-        await ff.run('-i',inputName,'-c:v','libx264','-preset','ultrafast','-crf','23','-c:a','aac','-movflags','faststart',outputName);
-        const data=ff.FS('readFile',outputName);
-        try{ ff.FS('unlink',inputName); }catch(e){}
-        try{ ff.FS('unlink',outputName); }catch(e){}
-        const blob=new Blob([data.buffer],{type:'video/mp4'});
+        // Hook stderr/stdout so we can surface a real diagnostic if exec "succeeds" but writes a bad mp4.
+        logHandler = ({type, message}) => {
+          if(!message) return;
+          ffLogTail.push(`[${type}] ${message}`);
+          if(ffLogTail.length > 200) ffLogTail.shift();
+        };
+        ff.on('log', logHandler);
+        // v0.12 API: progress via .on('progress', {progress})
+        progressHandler = ({progress}) => {
+          if(pctEl && Number.isFinite(progress)) pctEl.textContent=`${Math.round(Math.min(progress,1)*100)}%`;
+        };
+        ff.on('progress', progressHandler);
+        // FFmpeg.wasm v0.12 transfers the underlying ArrayBuffer to the worker (zero-copy),
+        // which detaches it on the main thread. We re-read from the File on every writeFile
+        // so each call gets a *fresh* ArrayBuffer and "ArrayBuffer is already detached" can't happen.
+        const writeInputFresh = async (ffInst) => {
+          const fresh = new Uint8Array(await file.arrayBuffer());
+          await ffInst.writeFile(inputName, fresh);
+        };
+        let activeFF = ff;
+        await writeInputFresh(activeFF);
+        const isOOM = (err) => {
+          const m = String(err && err.message || err);
+          return /memory access out of bounds|out of memory|allocation failed|abort\(OOM\)/i.test(m);
+        };
+        const isDetachedBuffer = (err) => /already detached/i.test(String(err && err.message || err));
+        const runOnce = async (q, withAudio) => {
+          const args = buildTranscodeArgs(inputName, outputName, q, { withAudio });
+          const finalOut = args[args.length - 1]; // VP9 path rewrites to .webm
+          await activeFF.exec(args);
+          return finalOut;
+        };
+        const reloadFFmpeg = async () => {
+          try{ ffmpegInstance && ffmpegInstance.terminate && ffmpegInstance.terminate(); }catch(e){}
+          ffmpegInstance = null; ffmpegReady = false;
+          activeFF = await getFFmpeg();
+          activeFF.on('log', logHandler);
+          activeFF.on('progress', progressHandler);
+          await writeInputFresh(activeFF);
+        };
+        let finalOutputName;
+        try{
+          finalOutputName = await runOnce(quality, true);
+        }catch(err){
+          if(isDetachedBuffer(err)){
+            // Worker's input buffer got detached for some reason — reload and retry once.
+            console.warn('Transcode hit a detached buffer; reloading FFmpeg and retrying once.');
+            ffLogTail.push('[retry] detached buffer reload');
+            await reloadFFmpeg();
+            finalOutputName = await runOnce(quality, true);
+          }else if(isOOM(err)){
+            // Out of memory — fall back to a less memory-hungry preset and try again.
+            const fallbackQ = quality === 'lossless-vp9' ? 'vp9-444-hq' : 'visual-lossless';
+            console.warn(`Transcode OOM at "${quality}" — auto-falling back to "${fallbackQ}".`);
+            ffLogTail.push(`[oom] fallback ${quality} -> ${fallbackQ}`);
+            setStatus(`Out of memory — retrying as ${QUALITY_LABELS[fallbackQ]||fallbackQ}`);
+            if(pctEl) pctEl.textContent = '0%';
+            await reloadFFmpeg();
+            quality = fallbackQ;
+            try{
+              finalOutputName = await runOnce(quality, true);
+            }catch(err2){
+              if(isOOM(err2)){
+                const cmd = `ffmpeg -i "${file.name}" -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 192k "${file.name.replace(/\.[^.]+$/, '')}_h264.mp4"`;
+                console.info('Suggested desktop FFmpeg command:\n' + cmd);
+                throw new Error(
+                  `Encoder ran out of memory at "${QUALITY_LABELS[quality]||quality}" too. ` +
+                  `File exceeds the browser WASM 4 GB heap. Pick "Fast Proxy 1280p", or pre-convert with desktop FFmpeg (command copied to console).`
+                );
+              }
+              throw err2;
+            }
+          }else{
+            // Retry without audio mapping in case the audio codec is the failure point.
+            console.warn('Transcode retry without audio:', err);
+            ffLogTail.push('[retry] without audio');
+            finalOutputName = await runOnce(quality, false);
+          }
+        }
+        const data = await activeFF.readFile(finalOutputName);
+        try{ await activeFF.deleteFile(inputName); }catch(e){}
+        try{ await activeFF.deleteFile(finalOutputName); }catch(e){}
+        const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+        const isWebm = finalOutputName.toLowerCase().endsWith('.webm');
+        // Sanity-check the output.
+        //   - MP4: must start with 'ftyp' box (bytes 4-7)
+        //   - WebM/EBML: must start with EBML magic 0x1A 0x45 0xDF 0xA3
+        const looksValid = (() => {
+          if(bytes.length < 1024) return false;
+          if(isWebm){
+            return bytes[0]===0x1A && bytes[1]===0x45 && bytes[2]===0xDF && bytes[3]===0xA3;
+          }
+          return bytes[4]===0x66 && bytes[5]===0x74 && bytes[6]===0x79 && bytes[7]===0x70;
+        })();
+        if(!looksValid){
+          console.error('FFmpeg log tail:\n' + ffLogTail.slice(-40).join('\n'));
+          throw new Error(
+            `Transcode produced an invalid file (${bytes.length} bytes). ` +
+            (sizeMb > 1500
+              ? 'File is too large to transcode in-browser (WASM 4 GB memory cap). Pre-convert with HandBrake or desktop FFmpeg.'
+              : 'See console for FFmpeg log.')
+          );
+        }
+        const mimeType = isWebm ? 'video/webm' : 'video/mp4';
+        const blob = new Blob([bytes], { type: mimeType });
         if(video._objectURL){ try{ URL.revokeObjectURL(video._objectURL); }catch(e){} }
         const url=URL.createObjectURL(blob);
         video._objectURL=url;
+        // Wait for the transcoded video to actually load before declaring success.
+        const loadOk = new Promise((resolve)=>{
+          let settled = false;
+          const finish = (ok) => { if(settled) return; settled = true; resolve(ok); };
+          video.addEventListener('loadedmetadata', ()=>finish(true), { once:true });
+          video.addEventListener('error', ()=>finish(false), { once:true });
+          setTimeout(()=>finish(false), 8000);
+        });
         video.src=url;
         box.classList.add('loaded');
         applyPlaybackOptimizations(video);
         try{ video.load(); }catch(e){}
+        const metaOk = await loadOk;
+        if(!metaOk){
+          console.error('FFmpeg log tail:\n' + ffLogTail.slice(-40).join('\n'));
+          // Roll back: clear the broken blob so the playbar doesn't keep ticking on invalid media.
+          try{ URL.revokeObjectURL(url); }catch(e){}
+          video.removeAttribute('src');
+          try{ video.load(); }catch(e){}
+          box.classList.remove('loaded');
+          label.textContent = '';
+          throw new Error('Transcoded output failed to load — the encoded MP4 is not playable. ' +
+            (sizeMb > 1000
+              ? 'File likely exceeded WASM memory (4 GB) during decode. Pre-convert outside the browser.'
+              : 'See console for FFmpeg log.'));
+        }
         scheduleResume(video,{shouldPlay:true});
         updateTimelineForPlayer(index,true);
         updatePlayButtons();
         label.textContent=file.name+' (transcoded)';
+        label.title=file.name+' (transcoded)';
       }finally{
+        if(progressHandler && ffmpegInstance){
+          try{ ffmpegInstance.off('progress', progressHandler); }catch(e){}
+        }
+        if(logHandler && ffmpegInstance){
+          try{ ffmpegInstance.off('log', logHandler); }catch(e){}
+        }
         overlay.remove();
       }
     }
@@ -3528,6 +4019,7 @@ const PLAYER_IDS = [1,2,3,4];
         metrics[i].playbackRate=v.playbackRate;
         updateMonitorUI(i);
       });
+      if(typeof updateSpeedDisplay === 'function') updateSpeedDisplay();
     }
     function cycleCrop(){
       cropState=(cropState+1)%3;
@@ -4240,6 +4732,790 @@ const PLAYER_IDS = [1,2,3,4];
       }
     }
 
+    // =================================================================
+    // Hamburger menu (collapses top-controls; hover or click to expand)
+    // =================================================================
+    function setupHamburgerMenu(){
+      const root = document.getElementById('topControls');
+      const btn = document.getElementById('hamburgerBtn');
+      if(!root || !btn) return;
+      // Start pinned open so the user sees the full menu before any media is loaded.
+      let pinned = true;
+      let userHasToggled = false;
+      let hoverCloseTimer = null;
+      const openMenu = ()=>{
+        root.classList.remove('collapsed');
+        root.classList.add('open');
+        btn.setAttribute('aria-expanded','true');
+      };
+      const closeMenu = ()=>{
+        if(pinned) return;
+        root.classList.add('collapsed');
+        root.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+      };
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        userHasToggled = true;
+        pinned = !pinned;
+        if(pinned) openMenu(); else closeMenu();
+      });
+      // Hover-expand pattern: show full controls when the user moves into the area
+      root.addEventListener('mouseenter', ()=>{
+        if(hoverCloseTimer){ clearTimeout(hoverCloseTimer); hoverCloseTimer=null; }
+        openMenu();
+      });
+      root.addEventListener('mouseleave', ()=>{
+        if(pinned) return;
+        hoverCloseTimer = setTimeout(()=>{ closeMenu(); hoverCloseTimer=null; }, 280);
+      });
+      // Dismiss pinned state when clicking outside the controls
+      document.addEventListener('click', e => {
+        if(!pinned) return;
+        if(!root.contains(e.target)){
+          // Outside-click counts as a user gesture — stop auto-managing the menu.
+          userHasToggled = true;
+          pinned = false;
+          closeMenu();
+        }
+      });
+      // Start open (initial empty state). Once the user loads their first media we
+      // automatically collapse — unless they've already toggled the menu themselves.
+      openMenu();
+      const autoCollapseOnFirstLoad = () => {
+        if(userHasToggled) { boxObserver.disconnect(); return; }
+        if(boxes.some(b => b && b.classList.contains('loaded'))){
+          pinned = false;
+          closeMenu();
+          boxObserver.disconnect();
+        }
+      };
+      const boxObserver = new MutationObserver(autoCollapseOnFirstLoad);
+      boxes.forEach(b => { if(b) boxObserver.observe(b, { attributes: true, attributeFilter: ['class'] }); });
+    }
+
+    // =================================================================
+    // Color Scopes (DaVinci Resolve–style): Waveform / Parade /
+    // Vectorscope / Histogram, sampled from a chosen player.
+    // =================================================================
+    const SCOPE_QUALITY = {
+      fast:     { stepX: 6, stepY: 6, sampleW: 320, sampleH: 180 },
+      balanced: { stepX: 3, stepY: 3, sampleW: 480, sampleH: 270 },
+      full:     { stepX: 2, stepY: 2, sampleW: 640, sampleH: 360 }
+    };
+    const scopeState = {
+      visible: false,
+      sourceIndex: 0,
+      quality: 'balanced',
+      rafId: null,
+      lastDrawnAt: 0,
+      // Reusable offscreen canvas to grab pixels from <video> / <img>
+      sampleCanvas: null,
+      sampleCtx: null
+    };
+
+    function setupColorScopes(){
+      const panel = document.getElementById('scopesPanel');
+      const btn = document.getElementById('scopesToggleBtn');
+      const closeBtn = document.getElementById('scopesPanelClose');
+      const sourceSelect = document.getElementById('scopesSourceSelect');
+      const qualitySelect = document.getElementById('scopesQualitySelect');
+      if(!panel || !btn) return;
+      btn.addEventListener('click', ()=>toggleScopesPanel());
+      if(closeBtn) closeBtn.addEventListener('click', ()=>toggleScopesPanel(false));
+      if(sourceSelect){
+        sourceSelect.addEventListener('change', ()=>{
+          scopeState.sourceIndex = parseInt(sourceSelect.value, 10) || 0;
+        });
+      }
+      if(qualitySelect){
+        qualitySelect.addEventListener('change', ()=>{
+          scopeState.quality = qualitySelect.value || 'balanced';
+        });
+      }
+      // Pre-create offscreen sample canvas
+      scopeState.sampleCanvas = document.createElement('canvas');
+      scopeState.sampleCtx = scopeState.sampleCanvas.getContext('2d', { willReadFrequently: true });
+    }
+
+    function toggleScopesPanel(force){
+      const panel = document.getElementById('scopesPanel');
+      const btn = document.getElementById('scopesToggleBtn');
+      if(!panel) return;
+      const next = typeof force === 'boolean' ? force : !scopeState.visible;
+      scopeState.visible = next;
+      panel.classList.toggle('visible', next);
+      panel.setAttribute('aria-hidden', next ? 'false' : 'true');
+      if(btn) btn.classList.toggle('active', next);
+      if(next){ scheduleScopeFrame(); } else { cancelScopeFrame(); }
+    }
+
+    function scheduleScopeFrame(){
+      cancelScopeFrame();
+      const loop = (ts)=>{
+        if(!scopeState.visible){ scopeState.rafId = null; return; }
+        // Throttle to ~12 fps to keep performance smooth even at Full quality
+        if(ts - scopeState.lastDrawnAt >= 80){
+          renderAllScopes();
+          scopeState.lastDrawnAt = ts;
+        }
+        scopeState.rafId = requestAnimationFrame(loop);
+      };
+      scopeState.rafId = requestAnimationFrame(loop);
+    }
+    function cancelScopeFrame(){
+      if(scopeState.rafId){ cancelAnimationFrame(scopeState.rafId); scopeState.rafId = null; }
+    }
+
+    function grabScopeFrame(index){
+      const cfg = SCOPE_QUALITY[scopeState.quality] || SCOPE_QUALITY.balanced;
+      const video = videos[index];
+      const image = images[index];
+      let srcW = 0, srcH = 0, source = null;
+      if(video && (video.currentSrc || video.src) && video.videoWidth > 0){
+        srcW = video.videoWidth; srcH = video.videoHeight; source = video;
+      } else if(image && image.naturalWidth > 0 && image.style.display !== 'none'){
+        srcW = image.naturalWidth; srcH = image.naturalHeight; source = image;
+      } else {
+        return null;
+      }
+      const scale = Math.min(cfg.sampleW / srcW, cfg.sampleH / srcH, 1);
+      const w = Math.max(2, Math.round(srcW * scale));
+      const h = Math.max(2, Math.round(srcH * scale));
+      const canvas = scopeState.sampleCanvas;
+      const ctx = scopeState.sampleCtx;
+      if(canvas.width !== w) canvas.width = w;
+      if(canvas.height !== h) canvas.height = h;
+      try{
+        ctx.drawImage(source, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h);
+        return { data: data.data, width: w, height: h, stepX: cfg.stepX, stepY: cfg.stepY };
+      }catch(err){
+        // CORS or premature draw — silently skip this frame
+        return null;
+      }
+    }
+
+    function renderAllScopes(){
+      const statusEl = document.getElementById('scopesStatus');
+      const frame = grabScopeFrame(scopeState.sourceIndex);
+      if(!frame){
+        if(statusEl) statusEl.textContent = `No frame data from P${scopeState.sourceIndex + 1}. Load a video or image into that player.`;
+        return;
+      }
+      if(statusEl){
+        statusEl.textContent = `Source: P${scopeState.sourceIndex + 1} · sampled ${frame.width}×${frame.height} (${scopeState.quality})`;
+      }
+      drawWaveformLuma(frame);
+      drawRGBParade(frame);
+      drawYCbCrParade(frame);
+      drawVectorscope(frame);
+      drawHistogramRGB(frame);
+      drawWaveformRGB(frame);
+      drawHueMap(frame);
+    }
+
+    function _getCtx(id){
+      const c = document.getElementById(id);
+      if(!c) return null;
+      return { canvas: c, ctx: c.getContext('2d') };
+    }
+    function _clearScope(c, ctx){
+      ctx.fillStyle = 'rgba(3,7,14,1)';
+      ctx.fillRect(0, 0, c.width, c.height);
+    }
+    function _scopeGrid(c, ctx, divisions=4, color='rgba(255,255,255,0.06)'){
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for(let i=1;i<divisions;i++){
+        const x = Math.round((c.width / divisions) * i) + 0.5;
+        const y = Math.round((c.height / divisions) * i) + 0.5;
+        ctx.moveTo(x, 0); ctx.lineTo(x, c.height);
+        ctx.moveTo(0, y); ctx.lineTo(c.width, y);
+      }
+      ctx.stroke();
+    }
+
+    function drawWaveformLuma(frame){
+      const r = _getCtx('scopeWaveformLuma'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      _scopeGrid(canvas, ctx, 4);
+      // Density accumulator: for each output column x, accumulate luma → y bin
+      const cols = W;
+      const bins = new Uint32Array(cols * H);
+      const { data, width, height, stepX, stepY } = frame;
+      for(let y=0; y<height; y+=stepY){
+        for(let x=0; x<width; x+=stepX){
+          const i = (y * width + x) * 4;
+          const luma = 0.2126*data[i] + 0.7152*data[i+1] + 0.0722*data[i+2];
+          const cx = Math.min(cols-1, Math.floor((x / (width-1)) * (cols-1)));
+          const cy = Math.min(H-1, H-1 - Math.floor((luma/255) * (H-1)));
+          bins[cy * cols + cx] += 1;
+        }
+      }
+      _paintDensity(ctx, bins, cols, H, [220, 235, 255]);
+    }
+
+    function _paintDensity(ctx, bins, W, H, baseRGB){
+      // Convert density into a glowing scope-style image
+      let maxV = 0;
+      for(let i=0;i<bins.length;i++){ if(bins[i] > maxV) maxV = bins[i]; }
+      if(!maxV) return;
+      const img = ctx.createImageData(W, H);
+      const out = img.data;
+      const invLog = 1 / Math.log(maxV + 1);
+      for(let i=0, j=0; i<bins.length; i++, j+=4){
+        const v = bins[i];
+        if(!v) continue;
+        const t = Math.log(v + 1) * invLog;
+        out[j]   = Math.min(255, baseRGB[0] * t);
+        out[j+1] = Math.min(255, baseRGB[1] * t);
+        out[j+2] = Math.min(255, baseRGB[2] * t);
+        out[j+3] = Math.min(255, 60 + 220 * t);
+      }
+      // Composite-on-top so existing grid stays visible
+      const tmp = document.createElement('canvas');
+      tmp.width = W; tmp.height = H;
+      tmp.getContext('2d').putImageData(img, 0, 0);
+      ctx.drawImage(tmp, 0, 0);
+    }
+
+    function drawRGBParade(frame){
+      const r = _getCtx('scopeParadeRGB'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      const cw = Math.floor((W - 8) / 3);
+      const lanes = [
+        { tint: [255, 90, 90],  channel: 0, x: 0 },
+        { tint: [120, 230, 130], channel: 1, x: cw + 4 },
+        { tint: [110, 170, 255], channel: 2, x: cw*2 + 8 }
+      ];
+      const { data, width, height, stepX, stepY } = frame;
+      lanes.forEach(lane => {
+        const bins = new Uint32Array(cw * H);
+        for(let y=0; y<height; y+=stepY){
+          for(let x=0; x<width; x+=stepX){
+            const i = (y * width + x) * 4;
+            const v = data[i + lane.channel];
+            const cx = Math.min(cw-1, Math.floor((x/(width-1)) * (cw-1)));
+            const cy = Math.min(H-1, H-1 - Math.floor((v/255) * (H-1)));
+            bins[cy * cw + cx] += 1;
+          }
+        }
+        // Lane background tint
+        ctx.fillStyle = 'rgba(255,255,255,0.02)';
+        ctx.fillRect(lane.x, 0, cw, H);
+        ctx.save();
+        ctx.translate(lane.x, 0);
+        const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = H;
+        const tctx = tmp.getContext('2d');
+        _paintDensity(tctx, bins, cw, H, lane.tint);
+        ctx.drawImage(tmp, 0, 0);
+        ctx.restore();
+        // 50% reference line
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(lane.x, H/2 + 0.5); ctx.lineTo(lane.x + cw, H/2 + 0.5);
+        ctx.stroke();
+      });
+    }
+
+    function drawYCbCrParade(frame){
+      const r = _getCtx('scopeParadeYCbCr'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      const cw = Math.floor((W - 8) / 3);
+      const { data, width, height, stepX, stepY } = frame;
+      const lanes = [
+        { tint: [220, 235, 255], idx: 0, x: 0 },         // Y
+        { tint: [120, 170, 255], idx: 1, x: cw + 4 },    // Cb
+        { tint: [255, 130, 150], idx: 2, x: cw*2 + 8 }   // Cr
+      ];
+      lanes.forEach(lane => {
+        const bins = new Uint32Array(cw * H);
+        for(let y=0; y<height; y+=stepY){
+          for(let x=0; x<width; x+=stepX){
+            const i = (y * width + x) * 4;
+            const R = data[i], G = data[i+1], B = data[i+2];
+            // BT.709 conversion; map Cb/Cr to [0,255]
+            const Y  = 0.2126*R + 0.7152*G + 0.0722*B;
+            const Cb = 128 + (-0.1146*R - 0.3854*G + 0.5*B);
+            const Cr = 128 + ( 0.5*R - 0.4542*G - 0.0458*B);
+            const val = lane.idx === 0 ? Y : (lane.idx === 1 ? Cb : Cr);
+            const cx = Math.min(cw-1, Math.floor((x/(width-1)) * (cw-1)));
+            const cy = Math.min(H-1, H-1 - Math.floor((Math.max(0,Math.min(255,val))/255) * (H-1)));
+            bins[cy * cw + cx] += 1;
+          }
+        }
+        const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = H;
+        _paintDensity(tmp.getContext('2d'), bins, cw, H, lane.tint);
+        ctx.drawImage(tmp, lane.x, 0);
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(lane.x, H/2 + 0.5); ctx.lineTo(lane.x + cw, H/2 + 0.5);
+        ctx.stroke();
+      });
+    }
+
+    function drawVectorscope(frame){
+      const r = _getCtx('scopeVectorscope'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      const cx = W/2, cy = H/2;
+      const R = Math.min(W, H) / 2 - 6;
+      // Concentric saturation rings
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.lineWidth = 1;
+      [0.25, 0.5, 0.75, 1].forEach(t => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * t, 0, Math.PI*2);
+        ctx.stroke();
+      });
+      // Color target boxes (R, YL, G, CY, B, MG) — DaVinci-style guides
+      const TARGETS = [
+        { name:'R',  angle: 103.5, sat: 0.6, color:'#ff4d4d' },
+        { name:'YL', angle: 167.0, sat: 0.6, color:'#ffd34d' },
+        { name:'G',  angle: 240.8, sat: 0.6, color:'#4dff8a' },
+        { name:'CY', angle: 283.5, sat: 0.6, color:'#4ddcff' },
+        { name:'B',  angle: 347.2, sat: 0.6, color:'#5a7bff' },
+        { name:'MG', angle:  60.8, sat: 0.6, color:'#ff6dff' }
+      ];
+      TARGETS.forEach(t => {
+        const a = (t.angle - 90) * Math.PI/180;
+        const tx = cx + Math.cos(a) * R * t.sat;
+        const ty = cy + Math.sin(a) * R * t.sat;
+        ctx.strokeStyle = t.color;
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(tx - 5, ty - 5, 10, 10);
+        ctx.fillStyle = t.color;
+        ctx.font = '9px Inter, Arial, sans-serif';
+        ctx.fillText(t.name, tx + 8, ty + 3);
+      });
+      // Skin-tone reference line (approx -123° = +33° pointing from origin)
+      ctx.strokeStyle = 'rgba(255,200,160,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      const sa = (33 - 90) * Math.PI/180;
+      ctx.lineTo(cx + Math.cos(sa) * R, cy + Math.sin(sa) * R);
+      ctx.stroke();
+      // Plot Cb/Cr scatter as glowing density
+      const D = Math.max(64, Math.floor(Math.min(W, H)));
+      const bins = new Uint32Array(D * D);
+      const { data, width, height, stepX, stepY } = frame;
+      const halfD = D / 2;
+      for(let y=0; y<height; y+=stepY){
+        for(let x=0; x<width; x+=stepX){
+          const i = (y * width + x) * 4;
+          const Rr=data[i], Gg=data[i+1], Bb=data[i+2];
+          const Cb = -0.1146*Rr - 0.3854*Gg + 0.5*Bb;       // [-128..128]
+          const Cr =  0.5*Rr   - 0.4542*Gg - 0.0458*Bb;     // [-128..128]
+          const bx = Math.min(D-1, Math.max(0, Math.floor(halfD + (Cb/128) * (R) * (D/W))));
+          const by = Math.min(D-1, Math.max(0, Math.floor(halfD - (Cr/128) * (R) * (D/H))));
+          bins[by * D + bx] += 1;
+        }
+      }
+      const tmp = document.createElement('canvas');
+      tmp.width = D; tmp.height = D;
+      _paintDensity(tmp.getContext('2d'), bins, D, D, [120, 230, 180]);
+      ctx.globalCompositeOperation = 'lighter';
+      // Center the density canvas around (cx, cy)
+      ctx.drawImage(tmp, cx - D/2, cy - D/2);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function drawHistogramRGB(frame){
+      const r = _getCtx('scopeHistogramRGB'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      _scopeGrid(canvas, ctx, 4);
+      const BINS = 128;
+      const rh = new Uint32Array(BINS);
+      const gh = new Uint32Array(BINS);
+      const bh = new Uint32Array(BINS);
+      const lh = new Uint32Array(BINS);
+      const { data, width, height, stepX, stepY } = frame;
+      for(let y=0; y<height; y+=stepY){
+        for(let x=0; x<width; x+=stepX){
+          const i = (y * width + x) * 4;
+          rh[Math.min(BINS-1, Math.floor(data[i]   * BINS/256))] += 1;
+          gh[Math.min(BINS-1, Math.floor(data[i+1] * BINS/256))] += 1;
+          bh[Math.min(BINS-1, Math.floor(data[i+2] * BINS/256))] += 1;
+          const lum = 0.2126*data[i] + 0.7152*data[i+1] + 0.0722*data[i+2];
+          lh[Math.min(BINS-1, Math.floor(lum * BINS/256))] += 1;
+        }
+      }
+      const maxV = Math.max(_arrMax(rh), _arrMax(gh), _arrMax(bh), _arrMax(lh), 1);
+      const drawCurve = (arr, color, alpha=0.9) => {
+        ctx.beginPath();
+        for(let i=0;i<BINS;i++){
+          const x = (i/(BINS-1)) * (W-4) + 2;
+          const y = H - (arr[i]/maxV) * (H-6) - 3;
+          if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.lineTo(W-2, H-2); ctx.lineTo(2, H-2); ctx.closePath();
+        ctx.fillStyle = color.replace(/[\d.]+\)$/g, `${alpha * 0.35})`);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      };
+      drawCurve(lh, 'rgba(230,230,230,0.95)', 0.6);
+      drawCurve(rh, 'rgba(255,80,80,0.95)',   0.55);
+      drawCurve(gh, 'rgba(110,230,120,0.95)', 0.55);
+      drawCurve(bh, 'rgba(110,160,255,0.95)', 0.55);
+    }
+    function _arrMax(a){ let m=0; for(let i=0;i<a.length;i++){ if(a[i]>m) m=a[i]; } return m; }
+
+    function drawWaveformRGB(frame){
+      const r = _getCtx('scopeWaveformRGB'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      _scopeGrid(canvas, ctx, 4);
+      const cols = W;
+      const binsR = new Uint32Array(cols * H);
+      const binsG = new Uint32Array(cols * H);
+      const binsB = new Uint32Array(cols * H);
+      const { data, width, height, stepX, stepY } = frame;
+      for(let y=0; y<height; y+=stepY){
+        for(let x=0; x<width; x+=stepX){
+          const i = (y * width + x) * 4;
+          const cx = Math.min(cols-1, Math.floor((x/(width-1)) * (cols-1)));
+          const cyR = Math.min(H-1, H-1 - Math.floor((data[i]   /255) * (H-1)));
+          const cyG = Math.min(H-1, H-1 - Math.floor((data[i+1] /255) * (H-1)));
+          const cyB = Math.min(H-1, H-1 - Math.floor((data[i+2] /255) * (H-1)));
+          binsR[cyR * cols + cx] += 1;
+          binsG[cyG * cols + cx] += 1;
+          binsB[cyB * cols + cx] += 1;
+        }
+      }
+      const tmpR = document.createElement('canvas'); tmpR.width = cols; tmpR.height = H;
+      const tmpG = document.createElement('canvas'); tmpG.width = cols; tmpG.height = H;
+      const tmpB = document.createElement('canvas'); tmpB.width = cols; tmpB.height = H;
+      _paintDensity(tmpR.getContext('2d'), binsR, cols, H, [255, 80, 80]);
+      _paintDensity(tmpG.getContext('2d'), binsG, cols, H, [100, 230, 110]);
+      _paintDensity(tmpB.getContext('2d'), binsB, cols, H, [120, 170, 255]);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(tmpR, 0, 0);
+      ctx.drawImage(tmpG, 0, 0);
+      ctx.drawImage(tmpB, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    function drawHueMap(frame){
+      const r = _getCtx('scopeHueMap'); if(!r) return;
+      const { canvas, ctx } = r;
+      const W = canvas.width, H = canvas.height;
+      _clearScope(canvas, ctx);
+      const cx = W/2, cy = H/2;
+      const R = Math.min(W, H)/2 - 6;
+      // Rainbow ring background to give context for hue position
+      const ringSteps = 60;
+      ctx.lineWidth = 8;
+      for(let s=0; s<ringSteps; s++){
+        const a0 = (s / ringSteps) * Math.PI*2;
+        const a1 = ((s+1) / ringSteps) * Math.PI*2;
+        ctx.strokeStyle = `hsl(${(s/ringSteps)*360}, 75%, 55%)`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, a0, a1);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath(); ctx.arc(cx, cy, R-4, 0, Math.PI*2); ctx.stroke();
+      // Plot saturated colors as dots; radius = saturation
+      const innerR = R - 6;
+      const { data, width, height, stepX, stepY } = frame;
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      for(let y=0; y<height; y+=stepY*2){
+        for(let x=0; x<width; x+=stepX*2){
+          const i = (y * width + x) * 4;
+          const Rr = data[i]/255, Gg = data[i+1]/255, Bb = data[i+2]/255;
+          const max = Math.max(Rr, Gg, Bb);
+          const min = Math.min(Rr, Gg, Bb);
+          const delta = max - min;
+          if(delta < 0.04) continue; // skip near-grays
+          let h = 0;
+          if(max === Rr) h = ((Gg - Bb)/delta) % 6;
+          else if(max === Gg) h = (Bb - Rr)/delta + 2;
+          else h = (Rr - Gg)/delta + 4;
+          h *= 60; if(h < 0) h += 360;
+          const sat = max ? delta / max : 0;
+          const a = (h - 90) * Math.PI/180;
+          const px = cx + Math.cos(a) * innerR * sat;
+          const py = cy + Math.sin(a) * innerR * sat;
+          ctx.fillRect(px, py, 1, 1);
+        }
+      }
+    }
+
+    // =================================================================
+    // Apple ProRes detection — proactively route to FFmpeg transcode
+    // =================================================================
+    const PRORES_FOURCCS = ['apco', 'apcs', 'apcn', 'apch', 'ap4h', 'ap4x'];
+    async function detectProResInMovFile(file){
+      if(!file) return false;
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      if(!['mov','mp4','m4v','qt'].includes(ext)) return false;
+      // Read up to two windows: start (faststart) and tail (Resolve/FCP often write moov at end)
+      const chunkSize = Math.min(file.size, 1024 * 256); // 256KB window
+      try{
+        const headBuf = await file.slice(0, chunkSize).arrayBuffer();
+        if(_containsProresFourCC(new Uint8Array(headBuf))) return true;
+        if(file.size > chunkSize){
+          const tailStart = Math.max(0, file.size - chunkSize);
+          const tailBuf = await file.slice(tailStart, file.size).arrayBuffer();
+          if(_containsProresFourCC(new Uint8Array(tailBuf))) return true;
+        }
+        return false;
+      }catch(err){
+        return false;
+      }
+    }
+    function _containsProresFourCC(bytes){
+      // FourCCs are 4 ASCII bytes; we scan for any of the ProRes ones in stsd context.
+      // To stay fast, do a simple byte scan for each FourCC pattern.
+      for(const fourcc of PRORES_FOURCCS){
+        const pat = [fourcc.charCodeAt(0), fourcc.charCodeAt(1), fourcc.charCodeAt(2), fourcc.charCodeAt(3)];
+        outer: for(let i=0;i<=bytes.length-4;i++){
+          if(bytes[i] !== pat[0]) continue;
+          for(let j=1;j<4;j++){ if(bytes[i+j] !== pat[j]) continue outer; }
+          return true;
+        }
+      }
+      return false;
+    }
+
+
+    // Initialize the hamburger menu + scopes panel now that all const state objects
+    // (scopeState, SCOPE_QUALITY, PRORES_FOURCCS) above have been initialized.
+    setupHamburgerMenu();
+    setupColorScopes();
+    setupFileProtocolWarning();
+    setupTranscodeQualitySelect();
+    setupHelpToggle();
+    setupFilenameEditing();
+    setupPlaybarMeta();
+
+    function setupHelpToggle(){
+      const help = document.querySelector('.help');
+      const icon = help && help.querySelector('.help-icon');
+      if(!help || !icon) return;
+      const close = () => help.classList.remove('open');
+      icon.addEventListener('click', e => {
+        e.stopPropagation();
+        help.classList.toggle('open');
+      });
+      // Click anywhere outside collapses the tooltip
+      document.addEventListener('click', e => {
+        if(!help.contains(e.target)) close();
+      });
+      // ESC closes too
+      document.addEventListener('keydown', e => {
+        if(e.key === 'Escape') close();
+      });
+    }
+
+    function setupFilenameEditing(){
+      labels.forEach((label, i) => {
+        if(!label) return;
+        // Stop click bubbling so the parent .video-box doesn't toggle zoom while editing.
+        label.addEventListener('click', e => {
+          if(!boxes[i].classList.contains('loaded')) return;
+          if(label.isContentEditable) return; // already editing
+          e.stopPropagation();
+          label._originalText = label.textContent;
+          label.contentEditable = 'true';
+          label.classList.add('editing');
+          label.focus();
+          const range = document.createRange();
+          range.selectNodeContents(label);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+        // Don't let clicks/drags inside the label trigger pan / sync-cursor / zoom on the box.
+        ['mousedown','mouseup','dblclick'].forEach(ev => {
+          label.addEventListener(ev, e => {
+            if(label.isContentEditable) e.stopPropagation();
+          });
+        });
+        label.addEventListener('blur', () => {
+          if(!label.classList.contains('editing')) return;
+          label.contentEditable = 'false';
+          label.classList.remove('editing');
+          const newName = (label.textContent || '').trim();
+          if(!newName){
+            // Restore previous name on empty input
+            label.textContent = label._originalText || '';
+          }
+          label.title = label.textContent || '';
+        });
+        label.addEventListener('keydown', e => {
+          if(!label.classList.contains('editing')) return;
+          if(e.key === 'Enter'){
+            e.preventDefault();
+            label.blur();
+          } else if(e.key === 'Escape'){
+            e.preventDefault();
+            label.textContent = label._originalText || '';
+            label.blur();
+          }
+        });
+      });
+    }
+
+    // Playback speed + zoom dropdown buttons on each playbar.
+    const SPEED_PRESETS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 4.0];
+    const ZOOM_PRESETS  = [1, 2, 4, 8, 16, 32, 50];
+    function fmtSpeed(r){
+      const s = r.toFixed(r % 1 === 0 ? 1 : 2);
+      return `${s.replace(/0+$/,'').replace(/\.$/,'.0')}×`;
+    }
+    function fmtZoom(z){ return `${Math.round(z * 100)}%`; }
+    function setPlaybackSpeed(rate){
+      const active = getActivePlayerIndices();
+      const targets = active.length ? active : [0,1,2,3];
+      targets.forEach(i => {
+        const v = videos[i];
+        if(!v) return;
+        v.playbackRate = rate;
+        if(metrics[i]) metrics[i].playbackRate = rate;
+        updateMonitorUI(i);
+      });
+      updateSpeedDisplay();
+    }
+    function updateSpeedDisplay(){
+      document.querySelectorAll('.playbar-speed').forEach((btn, i) => {
+        const v = videos[i];
+        btn.textContent = fmtSpeed(v && v.playbackRate ? v.playbackRate : 1);
+      });
+    }
+    function setZoomLevel(z){
+      zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+      zoomedIn = zoom > 1;
+      boxes.forEach(b => {
+        if(b && b.classList.contains('loaded')){
+          b.classList.toggle('zoomed', zoomedIn);
+          if(!panState.active) b.style.cursor = zoomedIn ? 'grab' : 'zoom-in';
+        }
+      });
+      updateTransforms();
+      updateZoomDisplay();
+    }
+    function updateZoomDisplay(){
+      const v = zoomedIn ? zoom : 1;
+      const txt = fmtZoom(v);
+      document.querySelectorAll('.playbar-zoom').forEach(btn => { btn.textContent = txt; });
+    }
+
+    function setupPlaybarMeta(){
+      const allBtns = document.querySelectorAll('.playbar-speed, .playbar-zoom');
+      const closeAll = () => {
+        allBtns.forEach(b => b.classList.remove('open'));
+        document.querySelectorAll('.playbar-popover').forEach(p => p.remove());
+      };
+      document.querySelectorAll('.playbar-speed').forEach((btn, i) => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const wasOpen = btn.classList.contains('open');
+          closeAll();
+          if(wasOpen) return;
+          btn.classList.add('open');
+          const pop = document.createElement('div');
+          pop.className = 'playbar-popover open';
+          SPEED_PRESETS.forEach(rate => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'playbar-popover-item';
+            item.textContent = fmtSpeed(rate);
+            const v = videos[i];
+            if(v && Math.abs(v.playbackRate - rate) < 0.001) item.classList.add('active');
+            item.addEventListener('click', evt => {
+              evt.stopPropagation();
+              setPlaybackSpeed(rate);
+              closeAll();
+            });
+            pop.appendChild(item);
+          });
+          // Anchor popover to the button
+          const parent = btn.closest('.playbar-meta');
+          if(parent){ parent.appendChild(pop); pop.style.left = `${btn.offsetLeft}px`; }
+        });
+      });
+      document.querySelectorAll('.playbar-zoom').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const wasOpen = btn.classList.contains('open');
+          closeAll();
+          if(wasOpen) return;
+          btn.classList.add('open');
+          const pop = document.createElement('div');
+          pop.className = 'playbar-popover open';
+          // "Fit" option resets zoom
+          const fit = document.createElement('button');
+          fit.type = 'button';
+          fit.className = 'playbar-popover-item';
+          fit.textContent = 'Fit';
+          if(!zoomedIn) fit.classList.add('active');
+          fit.addEventListener('click', evt => { evt.stopPropagation(); setZoomLevel(1); closeAll(); });
+          pop.appendChild(fit);
+          ZOOM_PRESETS.forEach(z => {
+            if(z === 1) return; // handled by "Fit"
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'playbar-popover-item';
+            item.textContent = fmtZoom(z);
+            if(zoomedIn && Math.abs(zoom - z) < 0.01) item.classList.add('active');
+            item.addEventListener('click', evt => { evt.stopPropagation(); setZoomLevel(z); closeAll(); });
+            pop.appendChild(item);
+          });
+          const parent = btn.closest('.playbar-meta');
+          if(parent){ parent.appendChild(pop); pop.style.left = `${btn.offsetLeft}px`; }
+        });
+      });
+      // Close on outside click / ESC
+      document.addEventListener('click', e => {
+        if(![...allBtns].some(b => b.contains(e.target))) closeAll();
+      });
+      document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAll(); });
+      updateSpeedDisplay();
+      updateZoomDisplay();
+    }
+
+    function setupTranscodeQualitySelect(){
+      const sel = document.getElementById('transcodeQualitySelect');
+      if(!sel) return;
+      sel.value = getTranscodeQuality();
+      sel.addEventListener('change', ()=>{
+        setTranscodeQuality(sel.value);
+      });
+    }
+
+    function setupFileProtocolWarning(){
+      // file:// origin is "null" — browsers block fetch(), Workers, and wasm streaming.
+      // That breaks FFmpeg (ProRes transcode), MediaInfo metadata, HLS, and remote URL loading.
+      // Surface a clear, dismissible banner so the user knows to start a local HTTP server.
+      if(location.protocol !== 'file:') return;
+      const banner = document.getElementById('fileProtocolWarning');
+      if(!banner) return;
+      banner.classList.add('visible');
+      banner.setAttribute('aria-hidden','false');
+      const dismiss = document.getElementById('dismissFileProtocolWarning');
+      if(dismiss){
+        dismiss.addEventListener('click', ()=>{
+          banner.classList.remove('visible');
+          banner.setAttribute('aria-hidden','true');
+        });
+      }
+    }
 
     setInterval(()=>{
       getActivePlayerIndices().forEach(index=>{

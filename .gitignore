@@ -34,6 +34,13 @@ auth.json
 # Codex / Claude local state — must never leave the machine
 .codex/
 .codex-profiles/
+.claude/
+
+# Tauri desktop app — bundled binaries fetched locally, build artifacts
+app/src-tauri/binaries/
+app/src-tauri/target/
+app/node_modules/
+app/dist/
 
 # Dashboard runtime data — generated at runtime, contains local paths and PII
 dashboard-data/state.json

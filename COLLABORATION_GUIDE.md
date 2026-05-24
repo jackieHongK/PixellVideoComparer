@@ -1,13 +1,16 @@
 # Collaboration Guide
 
-## Purpose
+## Layout
 
-This repository now has two priorities, in this order:
+This repo has two parallel product builds:
 
-1. Web-hosted service build
-2. Separate local single-file build
+| Folder | Build | Audience | Deployment |
+|---|---|---|---|
+| `web/` | Static web app | Anyone with a modern browser | GitHub Pages (auto, via Action) |
+| `app/` | Tauri desktop app | Power users (ProRes, HW accel) | Local installer (`npm run tauri build`) |
 
-The team must not mix those two tracks during day-to-day work.
+There is **no longer a dev/QA split** inside the web build. Production-only.
+All work lands directly in `web/` and ships to Pages on push to `main`.
 
 ## Roles
 
@@ -15,14 +18,11 @@ The team must not mix those two tracks during day-to-day work.
 
 Primary role:
 
-- Idea validation
-- Market research
-- Product planning
-- Marketing strategy
-- Policy and operating rules
+- Idea validation, market research, product planning
+- Marketing strategy, policy, operating rules
 - Collaboration guardrails
 
-Codex owns these document areas by default:
+Document areas owned by default:
 
 - `COLLABORATION_GUIDE.md`
 - `README.md`
@@ -38,115 +38,86 @@ Codex should not directly change release-critical UI behavior unless explicitly 
 
 Primary role:
 
-- Design
-- Frontend development
-- QA execution
+- Design, frontend development, QA execution
 
-Claude owns these implementation areas by default:
+Implementation areas owned by default:
 
-- `comparer_dev_qa.html`
-- `dev-assets/**`
+- `web/**` (production web build)
+- `app/**` (Tauri desktop build)
 - visual design changes
 - interaction logic
 - QA fixes tied to implementation
 
-Claude should treat `index.html` and `assets/**` as release targets, not day-to-day development files.
-
-### Proposed extra role: Release Integrator
-
-This role is required because someone must own the `dev -> prod` promotion step.
-
-Rules:
-
-- Only one active Release Integrator at a time
-- Default owner: Claude for technical promotion, user for final approval
-- Codex defines the release checklist and gate criteria
-
-Release Integrator responsibilities:
-
-- Promote approved `dev` changes into production files
-- Confirm references and paths still work on static hosting
-- Keep production and local build boundaries intact
-
 ## File Ownership
 
-### Production files
+### Web build (`web/`)
 
-- `index.html`
-- `assets/css/comparer.css`
-- `assets/js/parse-exr.js`
-- `assets/js/comparer-app.js`
-
-Rules:
-
-- Do not use these as active experimentation files
-- Update only after QA signoff on the dev build
-- Production sync should be done in a single intentional pass
-
-### Dev and QA files
-
-- `comparer_dev_qa.html`
-- `dev-assets/css/comparer.css`
-- `dev-assets/js/parse-exr.js`
-- `dev-assets/js/comparer-app.js`
+- `web/index.html`
+- `web/assets/css/comparer.css`
+- `web/assets/js/comparer-app.js`
+- `web/assets/js/parse-exr.js`
+- `web/assets/vendor/**`
+- `web/local-single-file/**`
 
 Rules:
 
-- All feature work starts here
-- All UI experiments happen here
-- QA is executed against this build first
+- This is the live production code. Every push to `main` that touches `web/**` deploys.
+- No separate "dev" tracking file — verify locally via `start-comparer.cmd` before committing.
+- Keep static-hosting friendly (no build step, no bundler).
 
-### Local single-file build
+### Desktop build (`app/`)
 
-- `local-single-file/comparer_local_singlefile.html`
-
-Rules:
-
-- Separate product track
-- Keep it downloadable and self-contained
-- Do not block web-hosted service work for local-build improvements
-- Port changes into this file only when intentionally maintaining the local build
-
-### Historical backups
-
-- `comparer_v1.6_260416.html`
-- `legacy/**`
+- `app/src-tauri/**` (Rust, Tauri config)
+- `app/package.json`
+- `app/scripts/**` (e.g. ffmpeg fetcher)
 
 Rules:
 
-- Preserve as references
-- Do not treat as active implementation targets
+- Test locally with `npm run tauri dev` before committing.
+- Embedded binaries (FFmpeg static) live in `app/src-tauri/binaries/` and are .gitignored — must be re-fetched per machine via `npm run fetch-ffmpeg`.
+- The desktop app loads `../web` as its frontend at build time, so any web change automatically lands in the desktop app on the next desktop build.
+
+### Historical / internal
+
+- `legacy/**` — read-only history
+- `dashboard.html`, `dashboard-server.js`, `dashboard-assets/`, `dashboard-data/` — internal ops dashboard
+- `agent-launchers/` — Windows launcher scripts for agent workflows
 
 ## Branch Rules
 
 - Never work directly on `main`
-- Use separate branches per person and task
-- Recommended branch names:
+- Use separate branches per person and task:
   - `codex/<topic>`
   - `claude/<topic>`
   - `release/<date-or-topic>`
 
 ## Working Rules
 
-- Codex decides positioning, roadmap priority, policy, documentation direction, and release gates
-- Claude decides implementation details, design execution, and QA fixes inside the dev build
-- If a change affects both product policy and implementation, Codex defines intent first and Claude implements second
-- If a file has a clear owner, the other agent should not modify it unless reassigned
-- If a cross-cutting change is unavoidable, document the handoff in the commit or PR summary
+- Codex decides positioning, roadmap priority, policy, documentation direction, release gates
+- Claude decides implementation details, design execution, and QA fixes
+- Cross-cutting changes: Codex defines intent first, Claude implements second
+- Document handoffs in commit messages or PR summaries
 
-## Promotion Flow
+## Release Flow
 
-1. Implement in `comparer_dev_qa.html` and `dev-assets/**`
-2. Run QA on the dev build
-3. Freeze scope for the release candidate
-4. Promote the approved result into `index.html` and `assets/**`
-5. Smoke test the production build
-6. Push only after the promotion pass is complete
+### Web build
+
+1. Implement in `web/**`
+2. Smoke-test locally with `start-comparer.cmd`
+3. PR → review → merge to `main`
+4. GitHub Action auto-deploys to Pages
+
+### Desktop build
+
+1. Implement in `app/**` (or share via `web/**`)
+2. Local test: `cd app && npm run tauri dev`
+3. Local build: `npm run tauri build` (produces installer in `app/src-tauri/target/release/bundle/`)
+4. Push when stable
+5. Release packaging is manual for now (no Action yet)
 
 ## Non-Negotiables
 
-- `index.html` is the production entry, not the sandbox
-- `comparer_dev_qa.html` is the active feature-development entry
-- `local-single-file/**` is a separate maintenance track
+- Production deploys go through the GitHub Action — no manual gh-pages branch edits
+- The desktop app must work offline (FFmpeg embedded, no network calls for core features)
 - One person owns release promotion at a time
-- Policy decisions and implementation decisions should not be merged into one undocumented edit
+- Policy decisions and implementation decisions stay separated in the commit log

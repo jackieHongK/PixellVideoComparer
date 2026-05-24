@@ -1,23 +1,36 @@
-# HLS/Video Comparer
+# Pixell Video Comparer
 
 A browser-based video comparison tool for fast before/after quality checks.
 
-## Repository structure
+Two builds live in this repo:
 
-- `index.html`: production entry for the web-hosted service
-- `assets/**`: production CSS and JS assets
-- `comparer_dev_qa.html`: active development and QA entry
-- `dev-assets/**`: development CSS and JS assets
-- `local-single-file/comparer_local_singlefile.html`: separate local-download single-file build
-- `comparer_v1.6_260416.html`: preserved reference snapshot
-- `COLLABORATION_GUIDE.md`: role boundaries and release workflow
-- `dashboard.html`: static ops dashboard for agents, tasks, sessions, and decisions
-- `agent-launchers/`: Windows launcher scripts for Codex, Claude, dashboard, and combined startup
-- `docs/GO_TO_MARKET_STRATEGY.md`: distribution, USP, positioning
-- `docs/PMF_HYPOTHESES.md`: validation hypotheses and test scenarios
-- `docs/ROADMAP.md`: milestones and sequencing
-- `docs/EXECUTION_BACKLOG.md`: role-based execution backlog
-- `docs/DASHBOARD_GUIDE.md`: dashboard behavior and extension path
+- **`web/`** — static web app, deployed to GitHub Pages.
+- **`app/`** — Tauri desktop wrapper (uses system-bundled FFmpeg with HW acceleration: NVENC / QuickSync / AMF). Not pushed to GitHub Pages.
+
+## Repository layout
+
+```
+web/                       # production web app (deployed to GitHub Pages)
+├── index.html
+├── about.html
+├── assets/
+│   ├── css/comparer.css
+│   ├── js/comparer-app.js
+│   ├── js/parse-exr.js
+│   └── vendor/{MediaInfoModule.wasm, mediainfo.umd.min.js}
+└── local-single-file/     # separate downloadable single-file build
+
+app/                       # Tauri desktop app (test locally first)
+├── src-tauri/             # Rust backend + Tauri config
+├── package.json           # Tauri CLI scripts
+└── README.md              # build / dev instructions
+
+docs/                      # roadmap, PMF hypotheses, etc.
+agent-launchers/           # internal Windows launcher scripts for agents
+dashboard.html             # ops dashboard (internal)
+.github/workflows/         # GitHub Pages deploy action
+start-comparer.cmd         # one-click local HTTP server for the web build
+```
 
 ## Why this exists
 
@@ -27,87 +40,91 @@ Comparing quality-improved output against the original is usually annoying:
 - Side-by-side layout needs constant manual resizing.
 - Repeating this workflow for many clips wastes time.
 
-This project solves that with a lightweight static web app that can also preserve a separate single-file local build.
+This project solves that with a lightweight static web app plus a desktop wrapper
+that adds native FFmpeg / HW-accelerated transcoding for codecs the browser can't
+play (Apple ProRes, etc.).
 
 ## What it does
 
-- Multi-view comparison layouts
-  - `1x2` (default)
-  - `2x2`
-  - `1x4`
-  - `1x3`
-- Drag-and-drop media loading
-  - Local files
-  - URL input
-  - HLS (`.m3u8`) via `hls.js`
-- Sync and navigation controls
-  - Play/pause, seek, frame stepping, speed control
-- Zoom/crop inspection
-  - Mouse wheel zoom
-  - Left/right 50% crop toggle
-- Real-time monitoring panel
-  - Bandwidth, latency, buffer, dropped frames, errors
-- Still-frame capture
-  - Button or `C` shortcut
-  - Saves PNGs using `sourceName_still_YYYYMMDD-hhmmss.png`
-  - Captures full native video frame resolution (independent of zoom/crop)
+- Multi-view comparison layouts: `1x2` (default), `2x2`, `1x4`, `1x3`
+- Drag-and-drop media loading: local files, URLs, HLS (`.m3u8`) via hls.js
+- Sync and navigation controls: play/pause, seek, frame stepping, speed control
+- Zoom + click-and-drag pan
+- Real-time monitoring panel (bandwidth, latency, buffer, dropped frames, errors)
+- DaVinci Resolve–style color scopes (waveform, parade, vectorscope, histogram, hue map)
+- Diff Lab (abs / signed / heatmap / threshold / SSIM / flicker / edge / chroma)
+- Still-frame capture (`C`)
+- Apple ProRes transcoding fallback (FFmpeg.wasm in the web build, native FFmpeg in the desktop build)
 
-## Removed in this version
+## Run the web build locally
 
-- Playlist feature has been removed.
+The page **must** be served over HTTP (not `file://`) so that WebAssembly,
+Workers, and `fetch()` work.
 
-## Run locally
+Windows one-click:
 
-1. Open `comparer_dev_qa.html` for feature work and QA, or `index.html` for the production build.
-2. Drag files into each player (or paste URL + Enter).
-3. Pick a layout and compare.
-4. Press `C` (or click `Capture`) to export current frames.
-5. Use the footer `About` link to open the product landing page (`about.html`).
+```cmd
+start-comparer.cmd
+```
 
-## Design reference
+Manual:
 
-- This project uses `DESIGN.md` as the current UI direction.
-- Production work should remain static-hosting friendly.
-- Dev-only experiments should stay in the dev build until approved.
+```bash
+# any static server works
+python -m http.server 8765 --directory web
+# then open http://localhost:8765/
+```
 
-## Free hosting on GitHub Pages
+## Run the desktop app
 
-This is a static app, so GitHub Pages hosting is free.
+See `app/README.md`. Quick version:
 
-1. Push this repository to GitHub.
-2. Go to `Settings -> Pages`.
-3. Set `Source` to `Deploy from a branch`.
-4. Select `main` and `/ (root)`.
-5. Save and wait for deployment.
+```bash
+cd app
+npm install
+npm run fetch-ffmpeg     # downloads a static FFmpeg into src-tauri/binaries/
+npm run tauri dev        # launch the desktop app
+npm run tauri build      # produce a Windows installer
+```
 
-Your site URL will be:
+## GitHub Pages deployment
 
-- `https://<username>.github.io/<repo-name>/`
+GitHub Pages is configured to deploy via the GitHub Actions workflow at
+`.github/workflows/deploy-pages.yml`. Any push to `main` that touches `web/**`
+publishes the new build automatically.
+
+**One-time repo setting:** Settings → Pages → Source → "GitHub Actions".
+
+Live URL: `https://<username>.github.io/PixellVideoComparer/`
 
 ## Keyboard shortcuts
 
-- `Space`: Play/Pause
+- `Space`: Play / Pause
 - `R`: Time sync
-- `0~9`: Jump to 0~90% timeline position
+- `0–9`: Jump to 0–90 % of timeline
 - `-`: Jump to latest buffered segment
-- `S`: Toggle left/right 50% crop
+- `S`: Toggle left/right 50 % crop
 - `M`: Toggle monitoring panel
 - `F`: Fullscreen
-- `Left/Right`: Step frame
-- `Shift + Left/Right`: Step 10 frames
+- `← / →`: Step frame
+- `Shift + ← / →`: Step 10 frames
 - `Shift + < / >`: Adjust playback speed
 - `C`: Save current frame as PNG
 - `Mouse wheel`: Zoom in/out
+- `Click + drag` (when zoomed): Pan
 
 ## Requirements
 
-- Modern browser (Chrome/Edge recommended)
-- Internet access for CDN-loaded `hls.js`
+- Modern browser (Chrome / Edge recommended for the web build)
+- For ProRes in the web build: internet access (FFmpeg.wasm + core downloaded from jsdelivr/unpkg)
+- For the desktop build: nothing — FFmpeg ships embedded
 
 ## Notes
 
 - Remote stream capture may fail if the source server blocks canvas access (CORS).
 - For GitHub Pages, prefer HTTPS media URLs.
+- The web build's ProRes transcoder is constrained by the WASM 4 GB heap. The
+  desktop build sidesteps this entirely.
 
 ## License
 
