@@ -923,6 +923,20 @@ window.UPSCALERS = [
   // Korean / Japanese / regional players
   // ============================================================
   {
+    name: 'AI PIXELL (AI픽셀)',
+    vendor: '4BY4 Inc.',
+    hq: 'South Korea · Seoul',
+    url: 'https://aipixell.com',
+    type: ['web', 'sdk'],
+    os: ['Browser', 'Cloud'],
+    category: 'Dedicated upscaler',
+    priceTier: 'paid',
+    price: '$0.9 / min (enhance)',
+    priceDetail: '$2 / min (4K upscale) · SaaS · API · On-Premise',
+    summary: 'Korean B2B AI video enhancement & 4K/8K super-resolution suite — super resolution, deinterlace, noise removal, high-efficiency pre-encode. Targets broadcasters and OTT archival workflows.',
+    tags: ['korean', 'broadcaster', 'ott', 'super resolution', 'deinterlace', 'denoise', 'api', 'on-premise', '4by4']
+  },
+  {
     name: 'EditAI',
     vendor: 'EditAI',
     hq: 'South Korea · Seoul',
