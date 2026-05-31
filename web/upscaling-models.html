@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixell — Open-Source Upscaling Models</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --dark: #191c1f;
+      --white: #ffffff;
+      --surface: #f4f4f4;
+      --blue: #494fdf;
+      --teal: #00a87e;
+      --muted: #8d969e;
+      --border: rgba(25,28,31,0.1);
+      --row-hover: rgba(73,79,223,0.04);
+      --gen-bg: rgba(217,70,239,0.10);
+      --gen-color: #a21caf;
+      --nongen-bg: rgba(0,168,126,0.10);
+      --nongen-color: #007a5b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--white); color: var(--dark);
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 40px;
+      background: rgba(255,255,255,0.88); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 12px; }
+    .nav-logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .nav-name { font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; font-weight: 600; letter-spacing: -0.025em; }
+    .nav-pills { display: flex; gap: 10px; }
+    .pill {
+      display: inline-flex; align-items: center;
+      height: 42px; padding: 0 22px;
+      border-radius: 9999px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
+      transition: opacity 0.18s;
+      cursor: pointer; border: none; white-space: nowrap;
+    }
+    .pill:hover { opacity: 0.8; }
+    .pill-dark { background: var(--dark); color: var(--white); }
+    .pill-out  { background: transparent; color: var(--dark); border: 2px solid var(--dark); }
+    .pill-active { background: var(--blue); color: var(--white); }
+
+    .page-head { max-width: 1400px; margin: 0 auto; padding: 64px 40px 36px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 9999px;
+      background: rgba(217,70,239,0.10);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--gen-color); margin-bottom: 24px;
+    }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gen-color); }
+    .page-title {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: clamp(36px, 5.5vw, 64px);
+      line-height: 1.02; font-weight: 500; letter-spacing: -0.03em;
+      margin-bottom: 18px;
+    }
+    .page-sub { color: var(--muted); font-size: 16px; line-height: 1.55; max-width: 760px; margin-bottom: 28px; }
+    .stats-row { display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+    .stat strong { color: var(--dark); font-weight: 600; }
+
+    .filters {
+      max-width: 1400px; margin: 0 auto;
+      padding: 0 40px 16px;
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .search-wrap { flex: 1; min-width: 240px; max-width: 420px; position: relative; }
+    .search {
+      width: 100%; height: 40px; border-radius: 9999px;
+      border: 1px solid var(--border); padding: 0 16px 0 40px;
+      font-family: inherit; font-size: 14px; background: var(--surface);
+    }
+    .search:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; opacity: 0.5; }
+    .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      height: 32px; padding: 0 14px; border-radius: 9999px;
+      background: var(--surface); border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .chip:hover { background: rgba(25,28,31,0.06); }
+    .chip.active { background: var(--dark); color: var(--white); }
+    .count-badge { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+    .section-head {
+      max-width: 1400px; margin: 24px auto 8px; padding: 0 40px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .section-head h2 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 22px; font-weight: 500; letter-spacing: -0.015em;
+    }
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 9999px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .section-tag.nongen { background: var(--nongen-bg); color: var(--nongen-color); }
+    .section-tag.gen    { background: var(--gen-bg);    color: var(--gen-color); }
+
+    .table-wrap { max-width: 1400px; margin: 0 auto; padding: 0 40px 36px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
+    thead th {
+      text-align: left; font-weight: 600; font-size: 12px;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      background: var(--white);
+      position: sticky; top: 70px; z-index: 5;
+      cursor: pointer; user-select: none;
+    }
+    thead th[data-sort]:hover { color: var(--dark); }
+    thead th[data-sort]::after { content: ""; display: inline-block; margin-left: 6px; opacity: 0.4; }
+    thead th.sort-asc::after  { content: "▲"; opacity: 0.9; }
+    thead th.sort-desc::after { content: "▼"; opacity: 0.9; }
+    tbody td { padding: 14px 16px; vertical-align: top; border-bottom: 1px solid var(--border); }
+    tbody tr:hover { background: var(--row-hover); }
+    .name-cell { font-weight: 600; }
+    .name-cell a { color: var(--dark); border-bottom: 1px dotted rgba(25,28,31,0.3); }
+    .name-cell a:hover { color: var(--blue); border-bottom-color: var(--blue); }
+    .publisher { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .summary-cell { color: rgba(25,28,31,0.78); line-height: 1.45; max-width: 460px; }
+    .license-cell { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 12px; color: rgba(25,28,31,0.7); }
+    .links-cell a {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 6px;
+      background: var(--surface); margin: 2px 4px 2px 0;
+      font-size: 11px; font-weight: 600;
+    }
+    .links-cell a:hover { background: rgba(73,79,223,0.10); color: var(--blue); }
+    .tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.02em;
+      margin: 2px 4px 2px 0;
+    }
+    .tag-task { background: rgba(73,79,223,0.08); color: var(--blue); }
+    .tag-year { background: rgba(25,28,31,0.05); color: var(--dark); font-variant-numeric: tabular-nums; }
+
+    footer { padding: 30px 40px; text-align: center; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+    footer a { color: var(--blue); }
+
+    @media (max-width: 720px) {
+      .nav { padding: 12px 16px; }
+      .page-head, .filters, .section-head, .table-wrap, footer { padding-left: 16px; padding-right: 16px; }
+      thead th { top: 64px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="nav">
+  <a class="nav-brand" href="./about.html">
+    <svg class="nav-logo" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Pixell">
+      <rect width="34" height="34" rx="8" fill="#191c1f"/>
+      <rect x="4" y="8" width="11" height="18" rx="2.5" fill="white" opacity="0.9"/>
+      <rect x="19" y="8" width="11" height="18" rx="2.5" fill="#494fdf" opacity="0.95"/>
+      <rect x="16.5" y="6" width="1.5" height="22" rx="0.75" fill="white" opacity="0.5"/>
+    </svg>
+    <span class="nav-name">Pixell Video Comparer</span>
+  </a>
+  <nav class="nav-pills">
+    <a class="pill pill-out"    href="./upscalers.html">Upscaler List</a>
+    <a class="pill pill-active" href="./upscaling-models.html">OSS Models</a>
+    <a class="pill pill-out"    href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">GitHub</a>
+    <a class="pill pill-dark"   href="./index.html">Launch App</a>
+  </nav>
+</header>
+
+<section class="page-head">
+  <div class="eyebrow"><span class="eyebrow-dot"></span>Open-Source Models Database</div>
+  <h1 class="page-title">Upscaling &amp; Restoration Models</h1>
+  <p class="page-sub">
+    Catalogued open-source upscaling, restoration, denoising, and frame-interpolation models — split into <b>non-generative</b>
+    (regression / GAN / transformer SR) and <b>generative</b> (diffusion / latent / video-foundation). Each row links to license,
+    GitHub, paper, and a one-line description.
+  </p>
+  <div class="stats-row">
+    <div class="stat"><strong id="stat-total">—</strong> models</div>
+    <div class="stat"><strong id="stat-nongen">—</strong> non-generative</div>
+    <div class="stat"><strong id="stat-gen">—</strong> generative</div>
+    <div class="stat"><strong id="stat-tasks">—</strong> distinct tasks</div>
+  </div>
+</section>
+
+<div class="filters">
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search" class="search" type="search" placeholder="Search model name, publisher, license, task…" />
+  </div>
+  <div class="filter-group" id="family-filters">
+    <button class="chip active" data-filter-family="all">All families</button>
+    <button class="chip" data-filter-family="non-generative">Non-generative</button>
+    <button class="chip" data-filter-family="generative">Generative</button>
+  </div>
+  <div class="filter-group" id="task-filters">
+    <button class="chip active" data-filter-task="all">All tasks</button>
+    <button class="chip" data-filter-task="super-resolution">Super-resolution</button>
+    <button class="chip" data-filter-task="interpolation">Interpolation</button>
+    <button class="chip" data-filter-task="restoration">Restoration</button>
+    <button class="chip" data-filter-task="denoise">Denoise</button>
+    <button class="chip" data-filter-task="colorize">Colorize</button>
+    <button class="chip" data-filter-task="stylize">Stylize</button>
+  </div>
+  <button id="export-csv" class="chip" title="Download the currently visible rows as CSV">⬇ Export CSV</button>
+  <div class="count-badge"><span id="count-visible">0</span> shown</div>
+</div>
+
+<div class="section-head">
+  <span class="section-tag nongen">Non-generative</span>
+  <h2>Regression / GAN / Transformer-based</h2>
+</div>
+<div class="table-wrap">
+  <table id="table-nongen">
+    <thead>
+      <tr>
+        <th data-sort="name"      style="min-width:220px">Model</th>
+        <th data-sort="task"      style="min-width:140px">Task</th>
+        <th data-sort="year"      style="min-width:80px">Year</th>
+        <th data-sort="publisher" style="min-width:200px">Publisher</th>
+        <th data-sort="license"   style="min-width:170px">License</th>
+        <th                        style="min-width:160px">Links</th>
+        <th>Summary</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="section-head">
+  <span class="section-tag gen">Generative</span>
+  <h2>Diffusion / Latent / Video-Foundation</h2>
+</div>
+<div class="table-wrap">
+  <table id="table-gen">
+    <thead>
+      <tr>
+        <th data-sort="name"      style="min-width:220px">Model</th>
+        <th data-sort="task"      style="min-width:140px">Task</th>
+        <th data-sort="year"      style="min-width:80px">Year</th>
+        <th data-sort="publisher" style="min-width:200px">Publisher</th>
+        <th data-sort="license"   style="min-width:170px">License</th>
+        <th                        style="min-width:160px">Links</th>
+        <th>Summary</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<footer>
+  Pixell Video Comparer — open-source models change quickly; PRs / corrections welcome on
+  <a href="https://github.com/jackieHongK/PixellVideoComparer">GitHub</a>.
+</footer>
+
+<script src="./assets/js/upscaling-models-data.js"></script>
+<script>
+  const ROWS = window.UPSCALING_MODELS || [];
+  const search = document.getElementById('search');
+  const familyButtons = document.querySelectorAll('[data-filter-family]');
+  const taskButtons = document.querySelectorAll('[data-filter-task]');
+  const countVisible = document.getElementById('count-visible');
+  const bodyNongen = document.querySelector('#table-nongen tbody');
+  const bodyGen    = document.querySelector('#table-gen    tbody');
+
+  let activeFamily = 'all';
+  let activeTask = 'all';
+  let sortKey = 'name';
+  let sortDir = 'asc';
+
+  function hostname(u){ try { return new URL(u).hostname.replace(/^www\./,''); } catch(e){ return u; } }
+
+  function rowMatches(r){
+    if (activeFamily !== 'all' && r.family !== activeFamily) return false;
+    if (activeTask   !== 'all' && r.task   !== activeTask)   return false;
+    const q = search.value.trim().toLowerCase();
+    if (!q) return true;
+    const hay = [r.name, r.publisher, r.license, r.task, r.summary, (r.tags||[]).join(' ')].join(' ').toLowerCase();
+    return hay.includes(q);
+  }
+
+  function compareRows(a, b){
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const va = a[sortKey], vb = b[sortKey];
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return String(va || '').localeCompare(String(vb || '')) * dir;
+  }
+
+  function renderTable(tbody, rows){
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="name-cell">
+          <a href="${r.github}" target="_blank" rel="noreferrer noopener">${r.name}</a>
+          ${r.paper ? `<div class="publisher"><a href="${r.paper}" target="_blank" rel="noreferrer noopener" style="color:var(--muted)">paper ↗</a></div>` : ''}
+        </td>
+        <td><span class="tag tag-task">${r.task}</span></td>
+        <td><span class="tag tag-year">${r.year}</span></td>
+        <td>${r.publisher}</td>
+        <td class="license-cell">${r.license}</td>
+        <td class="links-cell">
+          <a href="${r.github}" target="_blank" rel="noreferrer noopener">GitHub</a>
+          ${r.paper ? `<a href="${r.paper}" target="_blank" rel="noreferrer noopener">Paper</a>` : ''}
+        </td>
+        <td class="summary-cell">${r.summary}</td>
+      </tr>
+    `).join('');
+  }
+
+  function render(){
+    const visible = ROWS.filter(rowMatches).sort(compareRows);
+    const nongen  = visible.filter(r => r.family === 'non-generative');
+    const gen     = visible.filter(r => r.family === 'generative');
+    renderTable(bodyNongen, nongen);
+    renderTable(bodyGen,    gen);
+    countVisible.textContent = visible.length;
+    document.getElementById('stat-total').textContent  = ROWS.length;
+    document.getElementById('stat-nongen').textContent = ROWS.filter(r => r.family === 'non-generative').length;
+    document.getElementById('stat-gen').textContent    = ROWS.filter(r => r.family === 'generative').length;
+    document.getElementById('stat-tasks').textContent  = new Set(ROWS.map(r => r.task)).size;
+    document.querySelectorAll('thead th[data-sort]').forEach(th => {
+      th.classList.remove('sort-asc','sort-desc');
+      if (th.dataset.sort === sortKey) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    });
+  }
+
+  familyButtons.forEach(b => b.addEventListener('click', () => {
+    activeFamily = b.dataset.filterFamily;
+    familyButtons.forEach(x => x.classList.toggle('active', x === b));
+    render();
+  }));
+  taskButtons.forEach(b => b.addEventListener('click', () => {
+    activeTask = b.dataset.filterTask;
+    taskButtons.forEach(x => x.classList.toggle('active', x === b));
+    render();
+  }));
+  document.querySelectorAll('thead th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = k; sortDir = 'asc'; }
+    render();
+  }));
+  search.addEventListener('input', render);
+
+  document.getElementById('export-csv').addEventListener('click', () => {
+    const visible = ROWS.filter(rowMatches).sort(compareRows);
+    const cols = ['family','name','task','year','publisher','license','github','paper','summary','tags'];
+    const esc  = v => v == null ? '' : (Array.isArray(v) ? v.join('; ') : String(v)).replace(/"/g,'""');
+    const csv  = [cols.join(','), ...visible.map(r => cols.map(c => /[",\n]/.test(esc(r[c])) ? `"${esc(r[c])}"` : esc(r[c])).join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8' }));
+    a.download = `pixell-upscaling-models-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  render();
+</script>
+
+</body>
+</html>

@@ -616,7 +616,36 @@ const PLAYER_IDS = [1,2,3,4];
       const urlInput=box.querySelector(".url-input");
 
 
-      dropZone.addEventListener("click",()=>fileInput.click());
+      dropZone.addEventListener("click", async () => {
+        // In Tauri, prefer the native file dialog so we get the host path
+        // (the browser file picker doesn't expose it for security).
+        if(window.__TAURI__ && window.__TAURI__.dialog && window.__TAURI__.dialog.open){
+          try{
+            const selected = await window.__TAURI__.dialog.open({
+              multiple: false,
+              filters: [
+                { name: 'Video / Image', extensions: [
+                  'mp4','webm','mov','m4v','mkv','avi','ts','m3u8','qt','mxf',
+                  'png','jpg','jpeg','webp','gif','bmp','svg','avif','exr'
+                ] }
+              ]
+            });
+            if(!selected) return;
+            const path = Array.isArray(selected) ? selected[0] : selected;
+            const name = path.split(/[\\/]/).pop() || path;
+            // Build a File-like object carrying the host path so handleFile +
+            // the native-transcode bridge can use it. We attach .path; size and
+            // type are filled best-effort.
+            const pseudoFile = new File([new Blob([])], name, { type: '' });
+            try { Object.defineProperty(pseudoFile, 'path', { value: path, configurable: true }); } catch(_) {}
+            handleFile(pseudoFile, video, label, box, i);
+            return;
+          }catch(err){
+            console.warn('Tauri dialog failed, falling back to browser picker:', err);
+          }
+        }
+        fileInput.click();
+      });
       fileInput.addEventListener("change",e=>handleFile(e.target.files[0],video,label,box,i));
 
 
@@ -1241,6 +1270,78 @@ const PLAYER_IDS = [1,2,3,4];
 
 
     function handleFile(file,video,label,box,index,{fromPlaylist=false,autoplay=true,resumeTime=null}={}){
+      // Tauri-native path: when the file came from Tauri's native file dialog it carries
+      // an absolute host path but an *empty* Blob (we can't read the bytes without a real
+      // browser File). Use `convertFileSrc(path)` to point the <video> at the asset
+      // protocol instead of trying to URL-ify an empty blob.
+      if(file && file.path && window.__TAURI__ && window.__TAURI__.tauri && window.__TAURI__.tauri.convertFileSrc){
+        const path = file.path;
+        const guessed = inferMediaKindFromUrl(path) || 'video';
+        if(guessed === 'image'){
+          const httpUrl = window.__TAURI__.tauri.convertFileSrc(path);
+          loadImageSource({url:httpUrl, name:file.name||path}, label, box, index, {fromPlaylist});
+          return;
+        }
+        // Video / HLS — load via the asset protocol. If the codec is unsupported the
+        // <video> element will fire 'error' with code 4 and our existing fallback chain
+        // will trigger handleCodecFallback, which now sees file.path and routes to the
+        // Rust backend via the pixell_transcode invoke command.
+        clearImageSource(index);
+        clearVideoSource(video);
+        resetMetricState(index);
+        const httpUrl = window.__TAURI__.tauri.convertFileSrc(path);
+        video._objectURL = null;
+        video._sourceFile = file;
+        video.src = httpUrl;
+        analyzeFileMetadata(file, index).catch(()=>{});
+        showVideo(index);
+        applyPlaybackOptimizations(video);
+        try{ video.load(); }catch(_){}
+        scheduleResume(video, { resumeTime, shouldPlay: autoplay });
+        // Codec fallback: code 4 → run native ffmpeg via the Rust backend.
+        let fallbackTriggered = false;
+        const triggerFallback = (reason) => {
+          if(fallbackTriggered) return;
+          fallbackTriggered = true;
+          console.info(`Tauri codec fallback (${reason}) for`, path);
+          handleCodecFallback(file, video, label, box, index).catch(err => {
+            console.error('Codec fallback failed', err);
+            alert(`Codec fallback failed: ${err.message || err}`);
+          });
+        };
+        video.addEventListener('error', function onErr(){
+          if(video.error && video.error.code === 4) triggerFallback('MEDIA_ERR_SRC_NOT_SUPPORTED');
+        }, { once: true });
+        // ProRes-aware proactive detection by extension only (we can't read bytes here).
+        const lower = (path || '').toLowerCase();
+        if(/\.(mov|qt)$/.test(lower)){
+          // For .mov/.qt the browser may stall silently if it's ProRes; trip the fallback
+          // after a short watchdog if metadata never arrives.
+          const watchdog = setTimeout(() => {
+            if(!fallbackTriggered && (!video.readyState || video.readyState < 2) && !video.videoWidth){
+              triggerFallback('metadata stall (Tauri .mov)');
+            }
+          }, 3500);
+          const clear = () => clearTimeout(watchdog);
+          video.addEventListener('loadedmetadata', clear, { once:true });
+          video.addEventListener('error',          clear, { once:true });
+        }
+        label.textContent = file.name || path;
+        label.title = path;
+        box.classList.add('loaded');
+        if(index === 1){
+          rememberP2Variant({ type:'file', file, name: file.name || path });
+        }
+        updateTimelineForPlayer(index, true);
+        updatePlayButtons();
+        if(!fromPlaylist){
+          currentPlaylistId = null;
+          currentPlaylistIndex = null;
+          refreshPlaylistOverlay();
+        }
+        return;
+      }
+
       const mediaKind=inferMediaKindFromFile(file);
       if(!mediaKind){
         const fileName=file?.name||'Unknown file';
@@ -3774,6 +3875,12 @@ const PLAYER_IDS = [1,2,3,4];
       }
     }
 
+    // --- Tauri desktop detection ---
+    // When the page runs inside the Tauri shell, `window.__TAURI__` is injected.
+    // We use that to route ProRes transcoding to the native sidecar (NVENC etc.)
+    // instead of the in-browser FFmpeg.wasm path. The web build is unaffected.
+    const TAURI = typeof window !== 'undefined' && window.__TAURI__ ? window.__TAURI__ : null;
+
     async function handleCodecFallback(file,video,label,box,index){
       // Chrome decodes the AAC audio track of a ProRes .mov even when the video stream
       // can't render — so without this, the original file's audio keeps playing during
@@ -3788,6 +3895,48 @@ const PLAYER_IDS = [1,2,3,4];
       if(video._objectURL){ try{ URL.revokeObjectURL(video._objectURL); }catch(e){} video._objectURL=null; }
       updatePlayButtons();
       updateTimelineForPlayer(index, true);
+
+      // --- Native (Tauri) transcoding path ---
+      // If we're running inside the desktop app and we know the source's host path,
+      // hand off to the Rust backend which uses the bundled FFmpeg (with HW accel).
+      const hostPath = file && file.path;
+      if(TAURI && hostPath){
+        try{
+          const overlay=document.createElement('div');
+          overlay.className='transcode-overlay';
+          overlay.innerHTML = `<div class="transcode-msg">Transcoding (native FFmpeg)<br>
+            <span class="transcode-pct">running…</span><br>
+            <small>${file.name} — using bundled ffmpeg / HW encoder if available.</small></div>`;
+          box.appendChild(overlay);
+          const quality = (typeof getTranscodeQuality === 'function') ? getTranscodeQuality() : 'visual-lossless';
+          const outPath = await TAURI.invoke('pixell_transcode', { inputPath: hostPath, quality });
+          // Tauri exposes local files via the `convertFileSrc` helper.
+          const httpUrl = TAURI.tauri.convertFileSrc(outPath);
+          if(video._objectURL){ try{ URL.revokeObjectURL(video._objectURL); }catch(e){} }
+          video.src = httpUrl;
+          box.classList.add('loaded');
+          if(typeof applyPlaybackOptimizations === 'function') applyPlaybackOptimizations(video);
+          try{ video.load(); }catch(e){}
+          const loadOk = await new Promise((resolve) => {
+            let settled = false;
+            const finish = (ok) => { if(settled) return; settled = true; resolve(ok); };
+            video.addEventListener('loadedmetadata', ()=>finish(true), { once:true });
+            video.addEventListener('error',         ()=>finish(false), { once:true });
+            setTimeout(()=>finish(false), 8000);
+          });
+          if(!loadOk) throw new Error('Transcoded output failed to load in the player.');
+          scheduleResume(video, { shouldPlay: true });
+          updateTimelineForPlayer(index, true);
+          updatePlayButtons();
+          label.textContent = file.name + ' (native transcoded)';
+          label.title = file.name + ' — ' + outPath;
+          overlay.remove();
+          return;
+        }catch(err){
+          console.warn('Native FFmpeg path failed, falling back to wasm:', err);
+          // Fall through to the wasm path below
+        }
+      }
 
       const overlay=document.createElement('div');
       overlay.className='transcode-overlay';

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixell — Commercial Video Upscalers & Enhancers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --dark: #191c1f;
+      --white: #ffffff;
+      --surface: #f4f4f4;
+      --blue: #494fdf;
+      --teal: #00a87e;
+      --muted: #8d969e;
+      --border: rgba(25,28,31,0.1);
+      --row-hover: rgba(73,79,223,0.04);
+      --tag-bg: rgba(73,79,223,0.08);
+      --tag-color: #494fdf;
+      --tag-os-bg: rgba(0,168,126,0.08);
+      --tag-os-color: #007a5b;
+      --tag-paid-bg: rgba(225,29,72,0.08);
+      --tag-paid-color: #be1741;
+      --tag-free-bg: rgba(0,168,126,0.08);
+      --tag-free-color: #007a5b;
+      --tag-freemium-bg: rgba(217,119,6,0.10);
+      --tag-freemium-color: #a55706;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--white);
+      color: var(--dark);
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* NAV — same as about.html */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 40px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 12px; }
+    .nav-logo { width: 34px; height: 34px; flex-shrink: 0; }
+    .nav-name {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 16px; font-weight: 600; letter-spacing: -0.025em;
+    }
+    .nav-pills { display: flex; gap: 10px; }
+    .pill {
+      display: inline-flex; align-items: center;
+      height: 42px; padding: 0 22px;
+      border-radius: 9999px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
+      transition: opacity 0.18s;
+      cursor: pointer; border: none; white-space: nowrap;
+    }
+    .pill:hover { opacity: 0.8; }
+    .pill-dark { background: var(--dark); color: var(--white); }
+    .pill-out { background: transparent; color: var(--dark); border: 2px solid var(--dark); }
+    .pill-active { background: var(--blue); color: var(--white); }
+
+    /* HEADER */
+    .page-head {
+      max-width: 1400px; margin: 0 auto;
+      padding: 64px 40px 36px;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 9999px;
+      background: rgba(73,79,223,0.08);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 24px;
+    }
+    .eyebrow-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    .page-title {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: clamp(36px, 5.5vw, 64px);
+      line-height: 1.02; font-weight: 500; letter-spacing: -0.03em;
+      margin-bottom: 18px;
+    }
+    .page-sub {
+      color: var(--muted); font-size: 16px; line-height: 1.55;
+      max-width: 760px; margin-bottom: 28px;
+    }
+    .stats-row {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      font-size: 13px; color: var(--muted);
+    }
+    .stat strong { color: var(--dark); font-weight: 600; }
+
+    /* FILTERS */
+    .filters {
+      max-width: 1400px; margin: 0 auto;
+      padding: 0 40px 16px;
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .search-wrap {
+      flex: 1; min-width: 240px; max-width: 420px;
+      position: relative;
+    }
+    .search {
+      width: 100%; height: 40px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      padding: 0 16px 0 40px;
+      font-family: inherit; font-size: 14px;
+      background: var(--surface);
+    }
+    .search:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+    .search-icon {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      width: 16px; height: 16px; opacity: 0.5;
+    }
+    .filter-group {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .chip {
+      height: 32px; padding: 0 14px;
+      border-radius: 9999px;
+      background: var(--surface);
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:hover { background: rgba(25,28,31,0.06); }
+    .chip.active {
+      background: var(--dark); color: var(--white);
+    }
+    .count-badge {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* TABLE */
+    .table-wrap {
+      max-width: 1400px; margin: 0 auto;
+      padding: 0 40px 80px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 14px;
+      min-width: 1100px;
+    }
+    thead th {
+      text-align: left; font-weight: 600; font-size: 12px;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      background: var(--white);
+      position: sticky; top: 70px; z-index: 5;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th[data-sort]:hover { color: var(--dark); }
+    thead th[data-sort]::after {
+      content: "";
+      display: inline-block;
+      margin-left: 6px;
+      opacity: 0.4;
+    }
+    thead th.sort-asc::after  { content: "▲"; opacity: 0.9; }
+    thead th.sort-desc::after { content: "▼"; opacity: 0.9; }
+    tbody td {
+      padding: 16px; vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:hover { background: var(--row-hover); }
+    .title-cell { font-weight: 600; }
+    .title-cell a {
+      color: var(--dark);
+      border-bottom: 1px dotted rgba(25,28,31,0.3);
+    }
+    .title-cell a:hover { color: var(--blue); border-bottom-color: var(--blue); }
+    .url-host { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .summary-cell {
+      color: rgba(25,28,31,0.78);
+      line-height: 1.45;
+      max-width: 460px;
+    }
+    .tag {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 6px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.02em;
+      margin: 2px 4px 2px 0;
+    }
+    .tag-web      { background: var(--tag-bg);          color: var(--tag-color); }
+    .tag-desktop  { background: rgba(225,29,72,0.08);   color: #be1741; }
+    .tag-mobile   { background: rgba(217,119,6,0.10);   color: #a55706; }
+    .tag-plugin   { background: rgba(0,168,126,0.08);   color: var(--tag-os-color); }
+    .tag-sdk      { background: rgba(82,82,91,0.10);    color: #3f3f46; }
+    .tag-os       { background: var(--tag-os-bg);       color: var(--tag-os-color); }
+    .price-cell { font-variant-numeric: tabular-nums; }
+    .price-free       { color: var(--tag-free-color); font-weight: 600; }
+    .price-freemium   { color: var(--tag-freemium-color); font-weight: 600; }
+    .price-paid       { color: var(--tag-paid-color); font-weight: 600; }
+    .price-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ROADMAP */
+    .roadmap {
+      background: var(--surface);
+      padding: 64px 40px;
+    }
+    .roadmap-inner {
+      max-width: 1400px; margin: 0 auto;
+    }
+    .roadmap h2 {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: clamp(28px, 4vw, 44px); line-height: 1.05; font-weight: 500;
+      letter-spacing: -0.025em; margin-bottom: 18px;
+    }
+    .roadmap p { color: var(--muted); margin-bottom: 32px; max-width: 700px; line-height: 1.55; }
+    .phase-grid {
+      display: grid; gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+    .phase {
+      padding: 22px; border-radius: 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+    }
+    .phase-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 9999px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .phase-badge.done { background: rgba(0,168,126,0.10); color: var(--tag-os-color); }
+    .phase-badge.now  { background: rgba(73,79,223,0.10); color: var(--blue); }
+    .phase-badge.next { background: rgba(141,150,158,0.14); color: #5b6168; }
+    .phase h3 { font-size: 15px; margin-bottom: 8px; }
+    .phase p { font-size: 13px; color: rgba(25,28,31,0.7); margin-bottom: 0; line-height: 1.5; max-width: none; }
+
+    /* FOOTER */
+    footer {
+      padding: 30px 40px; text-align: center; color: var(--muted); font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--blue); }
+
+    @media (max-width: 720px) {
+      .nav { padding: 12px 16px; }
+      .page-head { padding: 32px 16px 20px; }
+      .filters, .table-wrap, .roadmap { padding-left: 16px; padding-right: 16px; }
+      thead th { top: 64px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <a class="nav-brand" href="./about.html">
+    <svg class="nav-logo" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Pixell">
+      <rect width="34" height="34" rx="8" fill="#191c1f"/>
+      <rect x="4" y="8" width="11" height="18" rx="2.5" fill="white" opacity="0.9"/>
+      <rect x="19" y="8" width="11" height="18" rx="2.5" fill="#494fdf" opacity="0.95"/>
+      <rect x="16.5" y="6" width="1.5" height="22" rx="0.75" fill="white" opacity="0.5"/>
+    </svg>
+    <span class="nav-name">Pixell Video Comparer</span>
+  </a>
+  <nav class="nav-pills">
+    <a class="pill pill-active" href="./upscalers.html">Upscaler List</a>
+    <a class="pill pill-out"    href="./upscaling-models.html">OSS Models</a>
+    <a class="pill pill-out"    href="https://github.com/jackieHongK/PixellVideoComparer" target="_blank" rel="noreferrer">GitHub</a>
+    <a class="pill pill-dark"   href="./index.html">Launch App</a>
+  </nav>
+</header>
+
+<section class="page-head">
+  <div class="eyebrow"><span class="eyebrow-dot"></span>Commercial Services Database</div>
+  <h1 class="page-title">Video Upscalers &amp; Enhancers Worldwide</h1>
+  <p class="page-sub">
+    A growing, curated list of commercial video upscaling and enhancement services — web apps, desktop apps, mobile apps, and SDKs.
+    Each entry covers product URL, deployment type, supported operating systems, pricing tier, and a one-line summary.
+    Used internally to compare Pixell against incumbents and to spot gaps.
+  </p>
+  <div class="stats-row">
+    <div class="stat"><strong id="stat-total">—</strong> total entries</div>
+    <div class="stat"><strong id="stat-web">—</strong> web</div>
+    <div class="stat"><strong id="stat-desktop">—</strong> desktop</div>
+    <div class="stat"><strong id="stat-mobile">—</strong> mobile</div>
+    <div class="stat"><strong id="stat-plugin">—</strong> plugins / SDK</div>
+  </div>
+</section>
+
+<div class="filters">
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search" class="search" type="search" placeholder="Search by name, OS, codec, vendor…" />
+  </div>
+  <div class="filter-group" id="type-filters">
+    <button class="chip active" data-filter-type="all">All types</button>
+    <button class="chip" data-filter-type="web">Web</button>
+    <button class="chip" data-filter-type="desktop">Desktop</button>
+    <button class="chip" data-filter-type="mobile">Mobile</button>
+    <button class="chip" data-filter-type="plugin">Plugin</button>
+    <button class="chip" data-filter-type="sdk">SDK / API</button>
+  </div>
+  <div class="filter-group" id="price-filters">
+    <button class="chip active" data-filter-price="all">All pricing</button>
+    <button class="chip" data-filter-price="free">Free</button>
+    <button class="chip" data-filter-price="freemium">Freemium</button>
+    <button class="chip" data-filter-price="paid">Paid</button>
+  </div>
+  <button id="export-csv" class="chip" title="Download the currently visible rows as CSV">⬇ Export CSV</button>
+  <div class="count-badge"><span id="count-visible">0</span> shown</div>
+</div>
+
+<div class="table-wrap">
+  <table id="upscaler-table">
+    <thead>
+      <tr>
+        <th data-sort="name" style="min-width:220px">Service</th>
+        <th data-sort="type" style="min-width:130px">Type</th>
+        <th data-sort="os" style="min-width:140px">Support OS</th>
+        <th data-sort="priceTier" style="min-width:160px">Price</th>
+        <th>Summary</th>
+      </tr>
+    </thead>
+    <tbody id="upscaler-tbody"></tbody>
+  </table>
+</div>
+
+<section class="roadmap">
+  <div class="roadmap-inner">
+    <h2>Data Roadmap</h2>
+    <p>
+      This database is being assembled in phases. Each phase appends to the same JS data source, so the
+      table grows non-destructively over time. Verification (live URL check, pricing freshness) runs in
+      a later phase.
+    </p>
+    <div class="phase-grid">
+      <div class="phase">
+        <span class="phase-badge done">✓ Phase 1</span>
+        <h3>Scaffold + GNB</h3>
+        <p>Page layout, filter / sort UI, navigation link from about.html. Data source structure defined as a JS array.</p>
+      </div>
+      <div class="phase">
+        <span class="phase-badge now">▶ Phase 2 — in progress</span>
+        <h3>Top 25 commercial services</h3>
+        <p>Industry leaders: Topaz Video AI, AVCLabs, DVDFab, HitPaw, Aiseesoft, Pixop, Tensorpix, Adobe Premiere SR, DaVinci Super Scale, CapCut Upscale, VEED, Clipchamp, NVIDIA RTX VSR, etc.</p>
+      </div>
+      <div class="phase">
+        <span class="phase-badge next">Phase 3</span>
+        <h3>Expand to 50+ entries</h3>
+        <p>Regional / niche vendors (KR / JP / CN), enterprise SDKs (NVIDIA Maxine, Intel VPL, Cloudinary), AI labs (Runway, Pika, Luma, Krea), plugins (Boris FX, Red Giant, ON1), mobile-only apps.</p>
+      </div>
+      <div class="phase">
+        <span class="phase-badge next">Phase 4</span>
+        <h3>Verify + filters + export</h3>
+        <p>Live URL HEAD checks, pricing freshness audit, CSV export button. Add sort persistence and shareable filter URL.</p>
+      </div>
+      <div class="phase">
+        <span class="phase-badge next">Phase 5</span>
+        <h3>Models page: non-gen vs generative</h3>
+        <p>Separate <code>upscaling-models.html</code> dedicated to OSS models with license, GitHub URL, publisher, paper, and inference speed. Split into non-generative (Real-ESRGAN, BasicVSR, EDVR, RIFE, FILM) vs generative (SD upscale, AnimateDiff, VideoCrafter).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Pixell Video Comparer — data is curated, may lag market changes. Contributions welcome via
+  <a href="https://github.com/jackieHongK/PixellVideoComparer">GitHub</a>.
+</footer>
+
+<script src="./assets/js/upscalers-data.js"></script>
+<script>
+  // Render the table from the global UPSCALERS array exposed by upscalers-data.js.
+  // Provides simple sort + filter behaviour without any framework.
+
+  const tbody = document.getElementById('upscaler-tbody');
+  const search = document.getElementById('search');
+  const countVisible = document.getElementById('count-visible');
+  const typeButtons = document.querySelectorAll('[data-filter-type]');
+  const priceButtons = document.querySelectorAll('[data-filter-price]');
+  const ths = document.querySelectorAll('thead th[data-sort]');
+
+  let activeType = 'all';
+  let activePrice = 'all';
+  let sortKey = 'name';
+  let sortDir = 'asc';
+
+  function hostname(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch (e) { return url; }
+  }
+
+  function priceClass(tier) {
+    if (tier === 'free') return 'price-free';
+    if (tier === 'freemium') return 'price-freemium';
+    return 'price-paid';
+  }
+
+  function typeTag(t) {
+    const map = { web:'web', desktop:'desktop', mobile:'mobile', plugin:'plugin', sdk:'sdk' };
+    return map[t] || 'web';
+  }
+
+  function rowMatches(row) {
+    if (activeType !== 'all' && !row.type.includes(activeType)) return false;
+    if (activePrice !== 'all' && row.priceTier !== activePrice) return false;
+    const q = search.value.trim().toLowerCase();
+    if (!q) return true;
+    const hay = (row.name + ' ' + (row.vendor||'') + ' ' + row.summary + ' ' + (row.os||[]).join(' ') + ' ' + (row.tags||[]).join(' ')).toLowerCase();
+    return hay.includes(q);
+  }
+
+  function compareRows(a, b) {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const va = sortKey === 'type'      ? a.type[0]
+             : sortKey === 'os'        ? (a.os||[])[0] || ''
+             : sortKey === 'priceTier' ? a.priceTier
+             :                            a.name;
+    const vb = sortKey === 'type'      ? b.type[0]
+             : sortKey === 'os'        ? (b.os||[])[0] || ''
+             : sortKey === 'priceTier' ? b.priceTier
+             :                            b.name;
+    return String(va).localeCompare(String(vb)) * dir;
+  }
+
+  function render() {
+    const all = (window.UPSCALERS || []).slice();
+    const visible = all.filter(rowMatches).sort(compareRows);
+    tbody.innerHTML = visible.map(row => `
+      <tr>
+        <td class="title-cell">
+          <a href="${row.url}" target="_blank" rel="noopener noreferrer">${row.name}</a>
+          <div class="url-host">${row.vendor ? row.vendor + ' · ' : ''}${hostname(row.url)}</div>
+        </td>
+        <td>${row.type.map(t => `<span class="tag tag-${typeTag(t)}">${t}</span>`).join('')}</td>
+        <td>${(row.os||[]).map(o => `<span class="tag tag-os">${o}</span>`).join('')}</td>
+        <td class="price-cell">
+          <span class="${priceClass(row.priceTier)}">${row.price}</span>
+          ${row.priceDetail ? `<div class="price-detail">${row.priceDetail}</div>` : ''}
+        </td>
+        <td class="summary-cell">${row.summary}</td>
+      </tr>
+    `).join('');
+    countVisible.textContent = visible.length;
+    document.getElementById('stat-total').textContent = all.length;
+    document.getElementById('stat-web').textContent     = all.filter(r => r.type.includes('web')).length;
+    document.getElementById('stat-desktop').textContent = all.filter(r => r.type.includes('desktop')).length;
+    document.getElementById('stat-mobile').textContent  = all.filter(r => r.type.includes('mobile')).length;
+    document.getElementById('stat-plugin').textContent  = all.filter(r => r.type.includes('plugin') || r.type.includes('sdk')).length;
+    ths.forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.sort === sortKey) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    });
+  }
+
+  typeButtons.forEach(b => b.addEventListener('click', () => {
+    activeType = b.dataset.filterType;
+    typeButtons.forEach(x => x.classList.toggle('active', x === b));
+    render();
+  }));
+  priceButtons.forEach(b => b.addEventListener('click', () => {
+    activePrice = b.dataset.filterPrice;
+    priceButtons.forEach(x => x.classList.toggle('active', x === b));
+    render();
+  }));
+  ths.forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = k; sortDir = 'asc'; }
+    render();
+  }));
+  search.addEventListener('input', render);
+
+  // CSV export of the currently visible (filtered + sorted) rows.
+  document.getElementById('export-csv').addEventListener('click', () => {
+    const visible = (window.UPSCALERS || []).filter(rowMatches).sort(compareRows);
+    const cols = ['name','vendor','url','type','os','priceTier','price','priceDetail','summary','tags'];
+    const escape = (v) => {
+      if (v == null) return '';
+      const s = Array.isArray(v) ? v.join('; ') : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [
+      cols.join(','),
+      ...visible.map(r => cols.map(c => escape(r[c])).join(','))
+    ].join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().slice(0,10);
+    a.download = `pixell-upscalers-${ts}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  render();
+</script>
+
+</body>
+</html>
