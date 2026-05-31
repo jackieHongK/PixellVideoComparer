@@ -78,7 +78,7 @@ window.UPSCALERS = [
     name: 'HitPaw Video Enhancer',
     vendor: 'HitPaw (Wangxu Tech)',
     hq: 'China · Shenzhen',
-    url: 'https://www.hitpaw.com/video-enhancer.html',
+    url: 'https://www.hitpaw.com/hitpaw-video-enhancer.html',
     type: ['desktop'],
     os: ['Windows', 'macOS'],
     category: 'Dedicated upscaler',
@@ -106,7 +106,7 @@ window.UPSCALERS = [
     name: 'VideoProc Converter AI',
     vendor: 'Digiarty Software',
     hq: 'China · Chengdu',
-    url: 'https://www.videoproc.com/video-converter/',
+    url: 'https://www.videoproc.com/video-process/',
     type: ['desktop'],
     os: ['Windows', 'macOS'],
     category: 'Dedicated upscaler',
@@ -162,7 +162,7 @@ window.UPSCALERS = [
     name: 'Movavi Video Editor AI',
     vendor: 'Movavi',
     hq: 'Cyprus · Limassol',
-    url: 'https://www.movavi.com/video-editor-plus/',
+    url: 'https://www.movavi.com/video-quality-enhancer/',
     type: ['desktop'],
     os: ['Windows', 'macOS'],
     category: 'NLE feature',
@@ -208,7 +208,7 @@ window.UPSCALERS = [
     name: 'Cutout.pro Video Enhancer',
     vendor: 'HiCloud / Cutout.pro',
     hq: 'China · Hangzhou',
-    url: 'https://www.cutout.pro/video-enhancer-upscaler',
+    url: 'https://www.cutout.pro/ai-video-enhancer',
     type: ['web'],
     os: ['Browser', 'Cloud'],
     category: 'Dedicated upscaler',
@@ -222,7 +222,7 @@ window.UPSCALERS = [
     name: 'VanceAI Video Enhancer',
     vendor: 'VanceAI',
     hq: 'China',
-    url: 'https://vanceai.com/video-enhancer-ai/',
+    url: 'https://video.vanceai.com/',
     type: ['web'],
     os: ['Browser', 'Cloud'],
     category: 'Dedicated upscaler',
@@ -236,7 +236,7 @@ window.UPSCALERS = [
     name: 'Media.io AI Video Enhancer',
     vendor: 'Wondershare',
     hq: 'China · Shenzhen',
-    url: 'https://www.media.io/ai/video-enhancer',
+    url: 'https://www.media.io/ai/ai-tools/video-enhancer',
     type: ['web'],
     os: ['Browser', 'Cloud'],
     category: 'Dedicated upscaler',
@@ -250,7 +250,7 @@ window.UPSCALERS = [
     name: 'TopMediai Video Enhancer',
     vendor: 'TopMediai',
     hq: 'China',
-    url: 'https://www.topmediai.com/video-enhancer/',
+    url: 'https://www.topmediai.com/app/video-enhancer/',
     type: ['web'],
     os: ['Browser', 'Cloud'],
     category: 'Dedicated upscaler',
@@ -273,48 +273,6 @@ window.UPSCALERS = [
     priceDetail: 'Pro+ $19.99 / mo',
     summary: 'Photo-first editor extended to video upscale / denoise / colorize. Subscription includes both photo & video tools.',
     tags: ['photo first', 'consumer']
-  },
-  {
-    name: 'Imagen 4K (Beautify.ai)',
-    vendor: 'Beautify.ai',
-    hq: 'China',
-    url: 'https://www.beautify.ai/video-upscaler',
-    type: ['web'],
-    os: ['Browser', 'Cloud'],
-    category: 'Dedicated upscaler',
-    priceTier: 'freemium',
-    price: 'Free trial · $9 / mo',
-    priceDetail: 'credit-based',
-    summary: 'Cloud upscaler from an Asian SEM team; focused on social-content workflows, fast turnaround on short clips.',
-    tags: ['social', 'short clips']
-  },
-  {
-    name: 'Sigma AI Video Upscaler',
-    vendor: 'Sigma AI Tools',
-    hq: 'India · Bengaluru',
-    url: 'https://sigma-ai-tools.com/video-enhancer',
-    type: ['web'],
-    os: ['Browser', 'Cloud'],
-    category: 'Dedicated upscaler',
-    priceTier: 'freemium',
-    price: 'Free · $7.99 / mo',
-    priceDetail: 'API tier',
-    summary: 'Lightweight cloud upscaler with credit / API model; lesser-known but used by small SEO / content teams.',
-    tags: ['cheap', 'api', 'seo']
-  },
-  {
-    name: 'Cleeck Video AI',
-    vendor: 'Cleeck',
-    hq: 'USA · Delaware',
-    url: 'https://www.cleeck.com/',
-    type: ['web'],
-    os: ['Browser', 'Cloud'],
-    category: 'Dedicated upscaler',
-    priceTier: 'freemium',
-    price: 'Free · $11 / mo Plus',
-    priceDetail: 'team plans',
-    summary: 'Lightweight upscale / enhance browser tool; bundle of standalone AI photo + video helpers.',
-    tags: ['lightweight', 'web']
   },
   {
     name: 'GoEnhance AI',
@@ -343,20 +301,6 @@ window.UPSCALERS = [
     priceDetail: 'Pro $99 / mo · Premium $299 / mo',
     summary: 'Photo upscaler famous for hallucination-style detail; expanding into video. Pricey but distinctive look.',
     tags: ['generative detail', 'high detail']
-  },
-  {
-    name: 'NoiselessCloud',
-    vendor: 'NoiselessCloud',
-    hq: 'USA',
-    url: 'https://noiselesscloud.com/',
-    type: ['web', 'sdk'],
-    os: ['Browser', 'Cloud'],
-    category: 'Dedicated upscaler',
-    priceTier: 'paid',
-    price: 'Pay-per-minute',
-    priceDetail: 'enterprise contracts',
-    summary: 'Cloud denoise + upscale service with FFmpeg-compatible CLI / API; popular in archival / digitization workflows.',
-    tags: ['denoise', 'archival', 'cli', 'api']
   },
 
   // ============================================================
@@ -408,7 +352,7 @@ window.UPSCALERS = [
     name: 'VEED.io AI Upscaler',
     vendor: 'VEED.io',
     hq: 'UK · London',
-    url: 'https://www.veed.io/tools/upscale-video',
+    url: 'https://www.veed.io/tools/video-enhancer',
     type: ['web'],
     os: ['Browser', 'Cloud'],
     category: 'NLE feature',
@@ -590,20 +534,6 @@ window.UPSCALERS = [
     summary: 'Mobile-first editor with AI enhance / upscale; same parent as Remini, mobile-creator focus.',
     tags: ['mobile', 'creator', 'splice']
   },
-  {
-    name: 'NeuralCam Video',
-    vendor: 'NeuralCam',
-    hq: 'Lithuania · Vilnius',
-    url: 'https://neuralcam.app/',
-    type: ['mobile'],
-    os: ['iOS'],
-    category: 'NLE feature',
-    priceTier: 'paid',
-    price: '$4.99 / mo',
-    priceDetail: 'yearly $29.99',
-    summary: 'iOS-only AI camera app with night mode + video enhance; well-reviewed by mobile-cinematography enthusiasts.',
-    tags: ['ios', 'night mode', 'camera']
-  },
 
   // ============================================================
   // Generative platforms that DO ship a discrete upscale feature
@@ -635,20 +565,6 @@ window.UPSCALERS = [
     priceDetail: 'Max $35 / mo · Enterprise plans',
     summary: 'Real-time AI canvas with a dedicated Video Enhance / Upscale mode; pairs with their image gen pipeline.',
     tags: ['generative', 'video enhance', 'real-time']
-  },
-  {
-    name: 'Vega AI Creator',
-    vendor: 'Tencent ARC Lab',
-    hq: 'China · Shenzhen',
-    url: 'https://www.vegaai.net/',
-    type: ['web'],
-    os: ['Browser', 'Cloud'],
-    category: 'Generative + upscale',
-    priceTier: 'freemium',
-    price: 'Free tier · Pro from ¥39 / mo',
-    priceDetail: 'enterprise quote',
-    summary: 'Tencent ARC Lab\'s creator platform with image + video gen + a Real-ESRGAN-lineage upscaler / GFP-GAN face restore.',
-    tags: ['tencent', 'real-esrgan', 'chinese']
   },
 
   // ============================================================
@@ -732,7 +648,7 @@ window.UPSCALERS = [
     name: 'NVIDIA RTX Video Super Resolution',
     vendor: 'NVIDIA',
     hq: 'USA · Santa Clara, CA',
-    url: 'https://www.nvidia.com/en-us/geforce/news/rtx-video-super-resolution/',
+    url: 'https://blogs.nvidia.com/blog/rtx-video-super-resolution/',
     type: ['plugin'],
     os: ['Windows'],
     category: 'Driver / OS-level',
@@ -746,7 +662,7 @@ window.UPSCALERS = [
     name: 'AMD FidelityFX Video Super Resolution',
     vendor: 'AMD',
     hq: 'USA · Santa Clara, CA',
-    url: 'https://www.amd.com/en/technologies/fluid-motion-frames.html',
+    url: 'https://www.amd.com/en/technologies/radeon-super-resolution',
     type: ['plugin'],
     os: ['Windows'],
     category: 'Driver / OS-level',
@@ -936,32 +852,6 @@ window.UPSCALERS = [
     summary: 'Korean B2B AI video enhancement & 4K/8K super-resolution suite — super resolution, deinterlace, noise removal, high-efficiency pre-encode. Targets broadcasters and OTT archival workflows.',
     tags: ['korean', 'broadcaster', 'ott', 'super resolution', 'deinterlace', 'denoise', 'api', 'on-premise', '4by4']
   },
-  {
-    name: 'EditAI',
-    vendor: 'EditAI',
-    hq: 'South Korea · Seoul',
-    url: 'https://www.editai.kr/',
-    type: ['web'],
-    os: ['Browser', 'Cloud'],
-    category: 'NLE feature',
-    priceTier: 'freemium',
-    price: 'Free trial · ₩9,900 / mo',
-    priceDetail: 'business plans',
-    summary: 'Korean AI video service with auto-editing + upscale / colorize; targets local creator / commerce market.',
-    tags: ['korean', 'creator', 'commerce']
-  },
-  {
-    name: 'Daglo',
-    vendor: 'Daglo',
-    hq: 'South Korea · Seoul',
-    url: 'https://daglo.ai/',
-    type: ['web'],
-    os: ['Browser', 'Cloud'],
-    category: 'NLE feature',
-    priceTier: 'freemium',
-    price: 'Free · paid from ₩9,000 / mo',
-    priceDetail: 'enterprise plans',
-    summary: 'Korean speech-to-text + video enhancement platform; recently added 4K upscale + interpolation features.',
-    tags: ['korean', 'stt', 'enterprise']
-  }
+  // (EditAI editai.kr — site offline as of 2026-05; removed)
+  // (Daglo daglo.ai   — STT/transcription only, no video enhance feature; removed)
 ];
