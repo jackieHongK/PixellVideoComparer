@@ -1143,5 +1143,83 @@ window.UPSCALERS = [
     priceDetail: 'ESRGAN Video · Clarity · Luma Video 4K · Kling 1.6 4K · 490+ models behind one key',
     summary: 'Dual-HQ model-platform (Santa Clara + Bengaluru; 2020) with multiple discrete video upscale endpoints incl. a dedicated 4K Pixelflow for Luma and Kling outputs.',
     tags: ['usa', 'api', 'developer', '4k', 'esrgan', 'segmind', 'pixelflow']
+  },
+
+  // ============================================================
+  // India
+  // ============================================================
+  {
+    name: 'Upscale.media — Video Upscaler',
+    vendor: 'Shopsense Retail Technologies Ltd. (Fynd / PixelBin)',
+    hq: 'India · Mumbai (Andheri East)',
+    url: 'https://www.upscale.media/video-upscale',
+    type: ['web'],
+    os: ['Browser', 'Cloud'],
+    category: 'Dedicated upscaler',
+    priceTier: 'freemium',
+    price: 'Free · 3 credits / mo',
+    priceDetail: 'paid from $31.49 / yr (1,500 credits) · $0.02 per credit · PAYG tiers $9.99–$84.99',
+    summary: 'Browser AI video upscaler from Mumbai (Shopsense / Fynd group). HD/SD → HD / FHD / 4K with frame-by-frame detail reconstruction; MP4 / MOV / WebM input.',
+    tags: ['indian', 'made-in-india', 'mumbai', 'fynd', 'shopsense', '4k', 'consumer']
+  },
+  {
+    name: 'PixelBin AI Video Enhancer',
+    vendor: 'Shopsense Retail Technologies Ltd. (Fynd / PixelBin)',
+    hq: 'India · Mumbai (Andheri East) · US presence San Jose CA',
+    url: 'https://www.pixelbin.io/',
+    type: ['web', 'mobile'],
+    os: ['Browser', 'Cloud', 'Android'],
+    category: 'Dedicated upscaler',
+    priceTier: 'freemium',
+    price: 'Free · 10 credits on signup',
+    priceDetail: 'Pro / Lite / Standard credit-based tiers · also a Video Upscale Android app',
+    summary: 'Sister product to Upscale.media (same Mumbai parent). One-tap AI Video Enhancer with resolution upscale, sharpen, denoise, frame-level brightness / color enhancement. Started as Fynd internal image pipeline.',
+    tags: ['indian', 'made-in-india', 'mumbai', 'fynd', 'pixelbin', 'android app', 'developer api']
+  },
+  {
+    name: 'InVideo AI Video Upscaler',
+    vendor: 'InVideo (Invideo Innovation Pte Ltd · Whitesheep Technology)',
+    hq: 'USA · Delaware (India R&D · Mumbai)',
+    url: 'https://invideo.io/make/upscale-video/',
+    type: ['web'],
+    os: ['Browser', 'Cloud'],
+    category: 'Generative + upscale',
+    priceTier: 'freemium',
+    price: 'Free w/ watermark · Plus $20 / mo',
+    priceDetail: 'Max $48 / mo for 4K export · India entity Whitesheep Technology Pvt Ltd Mumbai',
+    summary: 'Discrete AI Video Upscaler inside InVideo\'s AI video platform — 4K with HDR, sharpens detail, removes compression artifacts. Founder Sanket Shah Mumbai-based; legal HQ Delaware/SF.',
+    tags: ['indian-origin', 'mumbai', 'delaware', '4k', 'hdr', 'ai-video', 'invideo']
+  },
+
+  // ============================================================
+  // Singapore (Southeast Asia — only confirmed entries; ID/TH/VN/MY/PH all 0)
+  // ============================================================
+  {
+    name: 'MotionElements Studio AI — Video Upscaler',
+    vendor: 'MotionElements Pte Ltd',
+    hq: 'Singapore · Singapore (Orchard Road)',
+    url: 'https://ai.motionelements.com/video-upscaler',
+    type: ['web'],
+    os: ['Browser', 'Cloud'],
+    category: 'NLE feature',
+    priceTier: 'freemium',
+    price: 'Bundled in MotionElements subscription',
+    priceDetail: 'credit-based · stock-marketplace ecosystem',
+    summary: 'Discrete video upscaler inside MotionElements\' Studio AI suite (Singapore stock-media marketplace, founded 2007). Enhances to HD / 4K alongside T2V / I2V / V2V tools.',
+    tags: ['singapore', 'motionelements', 'stock marketplace', 'creator tools', '4k']
+  },
+  {
+    name: 'Pollo AI Video Upscaler',
+    vendor: 'Cocosoft Technology Pte Ltd',
+    hq: 'Singapore · Singapore',
+    url: 'https://pollo.ai/video-upscaler',
+    type: ['web', 'mobile'],
+    os: ['Browser', 'iOS', 'Android'],
+    category: 'Generative + upscale',
+    priceTier: 'freemium',
+    price: 'Free · Lite $10 / mo',
+    priceDetail: 'Pro $25–$659 / mo · 4K gated to paid · Standard / Face / Denoise modes',
+    summary: 'Discrete AI Video Upscaler with Standard / Face / Denoise modes — upscales to 4K with denoise, deblur, color correction. Singapore-registered entity (Dec 2021); founders / VCs of Chinese origin (note for transparency).',
+    tags: ['singapore', 'chinese-origin', 'pollo', '4k', 'face mode', 'denoise', 'multi-tool']
   }
 ];
