@@ -150,14 +150,19 @@
       font-size: 13px;
     }
 
-    /* TABLE */
+    /* TABLE
+       Note: do NOT use overflow-x:auto on .table-wrap — it creates a scroll
+       container that becomes the sticky-ancestor, so position:sticky on the
+       thead sticks to the wrapper's top edge (i.e., never appears) instead of
+       the page viewport. Border-collapse must be `separate` for sticky cells. */
     .table-wrap {
       max-width: 1400px; margin: 0 auto;
       padding: 0 40px 80px;
-      overflow-x: auto;
     }
     table {
-      width: 100%; border-collapse: collapse;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
       font-size: 14px;
       min-width: 1100px;
     }
@@ -168,6 +173,7 @@
       padding: 14px 16px; border-bottom: 1px solid var(--border);
       background: var(--white);
       position: sticky; top: 70px; z-index: 5;
+      box-shadow: 0 1px 0 var(--border);
       cursor: pointer;
       user-select: none;
     }
@@ -210,6 +216,15 @@
     .tag-plugin   { background: rgba(0,168,126,0.08);   color: var(--tag-os-color); }
     .tag-sdk      { background: rgba(82,82,91,0.10);    color: #3f3f46; }
     .tag-os       { background: var(--tag-os-bg);       color: var(--tag-os-color); }
+    .tag-cat       { font-size: 11px; padding: 3px 10px; border-radius: 6px; font-weight: 600; white-space: nowrap; }
+    .cat-dedicated { background: rgba(73,79,223,0.12);  color: #2b30c8; }
+    .cat-nle       { background: rgba(0,168,126,0.10);  color: #007a5b; }
+    .cat-gen       { background: rgba(217,70,239,0.12); color: #a21caf; }
+    .cat-rest      { background: rgba(225,29,72,0.10);  color: #be1741; }
+    .cat-driver    { background: rgba(217,119,6,0.10);  color: #a55706; }
+    .cat-sdk       { background: rgba(82,82,91,0.10);   color: #3f3f46; }
+    .hq-cell       { font-size: 12px; color: rgba(25,28,31,0.78); white-space: nowrap; }
+    .hq-flag       { display: inline-block; width: 18px; text-align: center; margin-right: 4px; }
     .price-cell { font-variant-numeric: tabular-nums; }
     .price-free       { color: var(--tag-free-color); font-weight: 600; }
     .price-freemium   { color: var(--tag-freemium-color); font-weight: 600; }
@@ -323,6 +338,15 @@
     <button class="chip" data-filter-price="freemium">Freemium</button>
     <button class="chip" data-filter-price="paid">Paid</button>
   </div>
+  <div class="filter-group" id="category-filters">
+    <button class="chip active" data-filter-cat="all">All categories</button>
+    <button class="chip" data-filter-cat="Dedicated upscaler">Dedicated upscaler</button>
+    <button class="chip" data-filter-cat="NLE feature">NLE feature</button>
+    <button class="chip" data-filter-cat="Generative + upscale">Generative + upscale</button>
+    <button class="chip" data-filter-cat="Restoration suite">Restoration suite</button>
+    <button class="chip" data-filter-cat="Driver / OS-level">Driver / OS</button>
+    <button class="chip" data-filter-cat="SDK / API">SDK / API</button>
+  </div>
   <button id="export-csv" class="chip" title="Download the currently visible rows as CSV">⬇ Export CSV</button>
   <div class="count-badge"><span id="count-visible">0</span> shown</div>
 </div>
@@ -331,10 +355,12 @@
   <table id="upscaler-table">
     <thead>
       <tr>
-        <th data-sort="name" style="min-width:220px">Service</th>
-        <th data-sort="type" style="min-width:130px">Type</th>
-        <th data-sort="os" style="min-width:140px">Support OS</th>
-        <th data-sort="priceTier" style="min-width:160px">Price</th>
+        <th data-sort="name"      style="min-width:220px">Service</th>
+        <th data-sort="category"  style="min-width:160px">Category</th>
+        <th data-sort="hq"        style="min-width:140px">HQ</th>
+        <th data-sort="type"      style="min-width:120px">Type</th>
+        <th data-sort="os"        style="min-width:140px">Support OS</th>
+        <th data-sort="priceTier" style="min-width:150px">Price</th>
         <th>Summary</th>
       </tr>
     </thead>
@@ -395,12 +421,53 @@
   const countVisible = document.getElementById('count-visible');
   const typeButtons = document.querySelectorAll('[data-filter-type]');
   const priceButtons = document.querySelectorAll('[data-filter-price]');
+  const catButtons = document.querySelectorAll('[data-filter-cat]');
   const ths = document.querySelectorAll('thead th[data-sort]');
 
   let activeType = 'all';
   let activePrice = 'all';
+  let activeCat = 'all';
   let sortKey = 'name';
   let sortDir = 'asc';
+
+  // Country → flag emoji (rough mapping by the first country word in the `hq` field)
+  function hqFlag(hq) {
+    if (!hq) return '🏳️';
+    const s = hq.toLowerCase();
+    if (s.startsWith('usa') || s.includes('united states')) return '🇺🇸';
+    if (s.startsWith('china') || s.includes('shenzhen') || s.includes('beijing') || s.includes('hong kong') || s.includes('chengdu')) return '🇨🇳';
+    if (s.startsWith('south korea') || s.includes('seoul')) return '🇰🇷';
+    if (s.startsWith('japan'))    return '🇯🇵';
+    if (s.startsWith('uk') || s.includes('london') || s.includes('united kingdom')) return '🇬🇧';
+    if (s.startsWith('germany'))  return '🇩🇪';
+    if (s.startsWith('france'))   return '🇫🇷';
+    if (s.startsWith('italy') || s.includes('milan')) return '🇮🇹';
+    if (s.startsWith('spain') || s.includes('barcelona')) return '🇪🇸';
+    if (s.startsWith('denmark') || s.includes('copenhagen')) return '🇩🇰';
+    if (s.startsWith('croatia') || s.includes('zagreb'))   return '🇭🇷';
+    if (s.startsWith('romania') || s.includes('cluj'))     return '🇷🇴';
+    if (s.startsWith('austria') || s.includes('klagenfurt')) return '🇦🇹';
+    if (s.startsWith('australia') || s.includes('melbourne')) return '🇦🇺';
+    if (s.startsWith('cyprus'))   return '🇨🇾';
+    if (s.startsWith('russia'))   return '🇷🇺';
+    if (s.startsWith('india') || s.includes('bengaluru'))  return '🇮🇳';
+    if (s.startsWith('lithuania') || s.includes('vilnius')) return '🇱🇹';
+    if (s.startsWith('taiwan'))   return '🇹🇼';
+    if (s.startsWith('canada'))   return '🇨🇦';
+    if (s.includes('israel'))     return '🇮🇱';
+    if (s.startsWith('community')) return '🌐';
+    return '🏳️';
+  }
+  function catClass(c) {
+    if (!c) return 'cat-dedicated';
+    if (c.startsWith('Dedicated')) return 'cat-dedicated';
+    if (c.startsWith('NLE'))       return 'cat-nle';
+    if (c.startsWith('Generative'))return 'cat-gen';
+    if (c.startsWith('Restoration'))return 'cat-rest';
+    if (c.startsWith('Driver'))    return 'cat-driver';
+    if (c.startsWith('SDK'))       return 'cat-sdk';
+    return 'cat-dedicated';
+  }
 
   function hostname(url) {
     try { return new URL(url).hostname.replace(/^www\./, ''); }
@@ -421,9 +488,10 @@
   function rowMatches(row) {
     if (activeType !== 'all' && !row.type.includes(activeType)) return false;
     if (activePrice !== 'all' && row.priceTier !== activePrice) return false;
+    if (activeCat !== 'all' && row.category !== activeCat) return false;
     const q = search.value.trim().toLowerCase();
     if (!q) return true;
-    const hay = (row.name + ' ' + (row.vendor||'') + ' ' + row.summary + ' ' + (row.os||[]).join(' ') + ' ' + (row.tags||[]).join(' ')).toLowerCase();
+    const hay = (row.name + ' ' + (row.vendor||'') + ' ' + (row.hq||'') + ' ' + (row.category||'') + ' ' + row.summary + ' ' + (row.os||[]).join(' ') + ' ' + (row.tags||[]).join(' ')).toLowerCase();
     return hay.includes(q);
   }
 
@@ -432,10 +500,14 @@
     const va = sortKey === 'type'      ? a.type[0]
              : sortKey === 'os'        ? (a.os||[])[0] || ''
              : sortKey === 'priceTier' ? a.priceTier
+             : sortKey === 'category'  ? (a.category || '')
+             : sortKey === 'hq'        ? (a.hq || '')
              :                            a.name;
     const vb = sortKey === 'type'      ? b.type[0]
              : sortKey === 'os'        ? (b.os||[])[0] || ''
              : sortKey === 'priceTier' ? b.priceTier
+             : sortKey === 'category'  ? (b.category || '')
+             : sortKey === 'hq'        ? (b.hq || '')
              :                            b.name;
     return String(va).localeCompare(String(vb)) * dir;
   }
@@ -449,6 +521,8 @@
           <a href="${row.url}" target="_blank" rel="noopener noreferrer">${row.name}</a>
           <div class="url-host">${row.vendor ? row.vendor + ' · ' : ''}${hostname(row.url)}</div>
         </td>
+        <td><span class="tag-cat ${catClass(row.category)}">${row.category || ''}</span></td>
+        <td class="hq-cell"><span class="hq-flag">${hqFlag(row.hq)}</span>${row.hq || ''}</td>
         <td>${row.type.map(t => `<span class="tag tag-${typeTag(t)}">${t}</span>`).join('')}</td>
         <td>${(row.os||[]).map(o => `<span class="tag tag-os">${o}</span>`).join('')}</td>
         <td class="price-cell">
@@ -480,6 +554,11 @@
     priceButtons.forEach(x => x.classList.toggle('active', x === b));
     render();
   }));
+  catButtons.forEach(b => b.addEventListener('click', () => {
+    activeCat = b.dataset.filterCat;
+    catButtons.forEach(x => x.classList.toggle('active', x === b));
+    render();
+  }));
   ths.forEach(th => th.addEventListener('click', () => {
     const k = th.dataset.sort;
     if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
@@ -491,7 +570,7 @@
   // CSV export of the currently visible (filtered + sorted) rows.
   document.getElementById('export-csv').addEventListener('click', () => {
     const visible = (window.UPSCALERS || []).filter(rowMatches).sort(compareRows);
-    const cols = ['name','vendor','url','type','os','priceTier','price','priceDetail','summary','tags'];
+    const cols = ['name','vendor','hq','category','url','type','os','priceTier','price','priceDetail','summary','tags'];
     const escape = (v) => {
       if (v == null) return '';
       const s = Array.isArray(v) ? v.join('; ') : String(v);

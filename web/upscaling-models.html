@@ -114,17 +114,48 @@
     .section-tag.nongen { background: var(--nongen-bg); color: var(--nongen-color); }
     .section-tag.gen    { background: var(--gen-bg);    color: var(--gen-color); }
 
-    .table-wrap { max-width: 1400px; margin: 0 auto; padding: 0 40px 36px; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
+    /* Note: do NOT use `overflow-x: auto` on this wrapper — it creates a scroll
+       container which becomes the sticky ancestor, so position:sticky on the thead
+       would stick to the wrapper's top edge (i.e., never visible) instead of the
+       page viewport. We let the table overflow naturally; horizontal page scroll
+       on very narrow viewports is acceptable. */
+    .table-wrap { max-width: 1400px; margin: 0 auto; padding: 0 40px 36px; }
+    /* `border-collapse: separate` is required for `position: sticky` to work reliably on
+       <thead>/<th>; with `collapse`, browsers drop the sticky behaviour and the header
+       scrolls away with the table body, then re-appears overlapping the wrong row. */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+      min-width: 1100px;
+    }
     thead th {
       text-align: left; font-weight: 600; font-size: 12px;
       letter-spacing: 0.04em; text-transform: uppercase;
       color: var(--muted);
-      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
       background: var(--white);
-      position: sticky; top: 70px; z-index: 5;
+      position: sticky;
+      top: 70px;
+      z-index: 5;
       cursor: pointer; user-select: none;
+      box-shadow: 0 1px 0 var(--border);
     }
+    /* Each section starts with its own non-gen / gen heading band that itself sticks
+       just below the nav. This stacks: nav (0-70) → section-head (70-118) → thead (118-…). */
+    .section-head {
+      position: sticky;
+      top: 70px;
+      z-index: 6;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(10px);
+      padding-top: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    thead th { top: 118px; }
     thead th[data-sort]:hover { color: var(--dark); }
     thead th[data-sort]::after { content: ""; display: inline-block; margin-left: 6px; opacity: 0.4; }
     thead th.sort-asc::after  { content: "▲"; opacity: 0.9; }
