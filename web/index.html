@@ -165,6 +165,8 @@ npx serve -l 8765 .</pre>
             <button class="fullscreen-toggle" type="button" aria-label="Fullscreen">⛶</button>
           </div>
         </div>
+
+        <div class="split-handle-layer" id="splitHandleLayer" aria-hidden="true"></div>
       </div>
     </div>
   
@@ -190,6 +192,9 @@ npx serve -l 8765 .</pre>
           <option value="2x2">2x2</option>
           <option value="1x4">1x4</option>
           <option value="1x3">1x3</option>
+          <option value="split-2">Split 2</option>
+          <option value="split-3">Split 3</option>
+          <option value="split-4">Split 4</option>
         </select>
       </label>
       <label class="layout-select-wrap diff-select-wrap diff-lab-only" for="diffModeSelect">
@@ -252,6 +257,7 @@ npx serve -l 8765 .</pre>
           0~9: Jump to 0-90% of timeline<br>
           - : Jump to latest buffered segment<br>
           S: Toggle left/right 50% crop<br>
+          Split layout: drag the vertical handle to wipe<br>
           M: Toggle monitoring panel<br>
           F: Fullscreen (window)<br>
           ← / → : Step frame<br>

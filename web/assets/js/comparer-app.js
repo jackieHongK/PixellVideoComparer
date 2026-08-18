@@ -4,7 +4,12 @@ const PLAYER_IDS = [1,2,3,4];
       '1x2': { label: '1x2', playerCount: 2, columns: 2, rows: 1 },
       '2x2': { label: '2x2', playerCount: 4, columns: 2, rows: 2 },
       '1x4': { label: '1x4', playerCount: 4, columns: 4, rows: 1 },
-      '1x3': { label: '1x3', playerCount: 3, columns: 3, rows: 1 }
+      '1x3': { label: '1x3', playerCount: 3, columns: 3, rows: 1 },
+      // Overlay layouts: players are stacked at the same size/position and
+      // revealed side-by-side through clip-path wipes with draggable handles.
+      'split-2': { label: 'Split 2', playerCount: 2, columns: 2, rows: 1, overlay: true },
+      'split-3': { label: 'Split 3', playerCount: 3, columns: 3, rows: 1, overlay: true },
+      'split-4': { label: 'Split 4', playerCount: 4, columns: 4, rows: 1, overlay: true }
     };
     const getLayoutConfig = (layoutId)=>LAYOUTS[layoutId] || LAYOUTS[DEFAULT_LAYOUT_ID];
     let activeLayoutId = DEFAULT_LAYOUT_ID;
@@ -18,6 +23,7 @@ const PLAYER_IDS = [1,2,3,4];
     const videoColumns = boxes.map(box=>box ? box.closest('.video-column') : null);
     const labels = PLAYER_IDS.map(i=>document.getElementById("label"+i));
     const gridEl = document.querySelector('.grid');
+    const splitHandleLayer = document.getElementById('splitHandleLayer');
     const viewerModeSelect = document.getElementById("viewerModeSelect");
     const compareLayoutSelect = document.getElementById("compareLayoutSelect");
     const diffModeSelect = document.getElementById("diffModeSelect");
@@ -185,13 +191,137 @@ const PLAYER_IDS = [1,2,3,4];
       return Math.round(getPlayerOffsetSeconds(index) / getFrameDuration(0));
     }
 
+    // --- Split (overlay wipe) view ---
+    // positions: sorted boundary fractions (0..1) between adjacent segments,
+    // length = playerCount-1. Kept across re-applies of the same player count.
+    const SPLIT_MIN_SEGMENT = 0.05;
+    const splitState = { positions: [], handles: [] };
+
+    const isSplitLayout = ()=>!!getLayoutConfig(activeLayoutId).overlay;
+
+    function ensureSplitPositions(playerCount){
+      if(splitState.positions.length !== playerCount-1){
+        splitState.positions = Array.from({length: playerCount-1}, (_,k)=>(k+1)/playerCount);
+      }
+    }
+
+    function setSplitPosition(handleIndex, fraction){
+      const positions = splitState.positions;
+      if(handleIndex<0 || handleIndex>=positions.length) return;
+      const lo = (handleIndex===0 ? 0 : positions[handleIndex-1]) + SPLIT_MIN_SEGMENT;
+      const hi = (handleIndex===positions.length-1 ? 1 : positions[handleIndex+1]) - SPLIT_MIN_SEGMENT;
+      positions[handleIndex] = Math.min(Math.max(fraction, lo), hi);
+      updateSplitView();
+    }
+
+    function updateSplitView(){
+      if(!isSplitLayout()) return;
+      const bounds = [0, ...splitState.positions, 1];
+      getActivePlayerIndices().forEach(index=>{
+        const box = boxes[index];
+        if(!box) return;
+        const segStart = bounds[index]*100;
+        const segEnd = bounds[index+1]*100;
+        const segWidth = segEnd - segStart;
+        // clip-path also clips hit-testing, so each stacked box only receives
+        // pointer/drop events inside its own segment.
+        box.style.clipPath = `inset(0 ${100-segEnd}% 0 ${segStart}%)`;
+        const labelEl = labels[index];
+        if(labelEl){
+          labelEl.style.left = `calc(${segStart}% + 10px)`;
+          labelEl.style.right = 'auto';
+          labelEl.style.maxWidth = `calc(${segWidth}% - 20px)`;
+        }
+        const cornerEl = box.querySelector('.corner-number');
+        if(cornerEl) cornerEl.style.left = `calc(${segStart}% + 10px)`;
+        const modalEl = box.querySelector('.input-modal');
+        if(modalEl) modalEl.style.left = `${segStart + segWidth/2}%`;
+      });
+      splitState.handles.forEach((handle,k)=>{
+        handle.style.left = `${splitState.positions[k]*100}%`;
+      });
+    }
+
+    function clearSplitView(){
+      boxes.forEach((box,index)=>{
+        if(!box) return;
+        box.style.clipPath = '';
+        const labelEl = labels[index];
+        if(labelEl){
+          labelEl.style.left = '';
+          labelEl.style.right = '';
+          labelEl.style.maxWidth = '';
+        }
+        const cornerEl = box.querySelector('.corner-number');
+        if(cornerEl) cornerEl.style.left = '';
+        const modalEl = box.querySelector('.input-modal');
+        if(modalEl) modalEl.style.left = '';
+      });
+      if(splitHandleLayer) splitHandleLayer.replaceChildren();
+      splitState.handles = [];
+    }
+
+    function attachSplitHandleEvents(handle, handleIndex){
+      handle.addEventListener('pointerdown', e=>{
+        if(e.pointerType==='mouse' && e.button!==0) return;
+        e.preventDefault();
+        try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+        handle.classList.add('dragging');
+      });
+      handle.addEventListener('pointermove', e=>{
+        if(!handle.classList.contains('dragging')) return;
+        const rect = splitHandleLayer.getBoundingClientRect();
+        if(!(rect.width>0)) return;
+        setSplitPosition(handleIndex, (e.clientX-rect.left)/rect.width);
+      });
+      const endDrag = ()=>handle.classList.remove('dragging');
+      handle.addEventListener('pointerup', endDrag);
+      handle.addEventListener('pointercancel', endDrag);
+      handle.addEventListener('keydown', e=>{
+        if(e.key!=='ArrowLeft' && e.key!=='ArrowRight') return;
+        e.preventDefault();
+        e.stopPropagation(); // keep the global frame-step shortcut out of handle moves
+        const step = e.shiftKey ? 0.05 : 0.01;
+        const delta = e.key==='ArrowRight' ? step : -step;
+        setSplitPosition(handleIndex, splitState.positions[handleIndex]+delta);
+      });
+    }
+
+    function rebuildSplitHandles(){
+      if(!splitHandleLayer) return;
+      splitState.handles = splitState.positions.map((_,k)=>{
+        const handle = document.createElement('div');
+        handle.className = 'split-handle';
+        handle.tabIndex = 0;
+        handle.setAttribute('role','separator');
+        handle.setAttribute('aria-orientation','vertical');
+        handle.setAttribute('aria-label',`Split divider ${k+1} (drag or use arrow keys)`);
+        const grip = document.createElement('div');
+        grip.className = 'split-handle-grip';
+        grip.textContent = '◂▸';
+        handle.appendChild(grip);
+        attachSplitHandleEvents(handle, k);
+        splitHandleLayer.appendChild(handle);
+        return handle;
+      });
+      updateSplitView();
+    }
+
     function applyModeState(layoutId){
       const layout = getLayoutConfig(layoutId);
       activeLayoutId = Object.prototype.hasOwnProperty.call(LAYOUTS, layoutId) ? layoutId : DEFAULT_LAYOUT_ID;
       activePlayerCount = layout.playerCount;
+      const isSplit = !!layout.overlay;
       if(gridEl){
-        gridEl.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
-        gridEl.style.gridTemplateRows = `repeat(${layout.rows}, minmax(0, 1fr))`;
+        if(isSplit){
+          // One column per playbar; all video boxes overlap in row 1 (grid-column: 1/-1).
+          gridEl.style.gridTemplateColumns = `repeat(${layout.playerCount}, minmax(0, 1fr))`;
+          gridEl.style.gridTemplateRows = 'minmax(0, 1fr) auto';
+        }else{
+          gridEl.style.gridTemplateColumns = `repeat(${layout.columns}, minmax(0, 1fr))`;
+          gridEl.style.gridTemplateRows = `repeat(${layout.rows}, minmax(0, 1fr))`;
+        }
+        gridEl.classList.toggle('split-mode', isSplit);
         gridEl.dataset.layout = activeLayoutId;
       }
       if(compareLayoutSelect && compareLayoutSelect.value !== activeLayoutId){
@@ -200,8 +330,13 @@ const PLAYER_IDS = [1,2,3,4];
       document.body.classList.toggle('diff-lab-mode', viewerMode==='diff-lab');
       videoColumns.forEach((col,index)=>{
         if(!col) return;
-        col.style.display = isPlayerActive(index) ? 'flex' : 'none';
+        col.style.display = isPlayerActive(index) ? (isSplit ? 'contents' : 'flex') : 'none';
       });
+      clearSplitView();
+      if(isSplit){
+        ensureSplitPositions(layout.playerCount);
+        rebuildSplitHandles();
+      }
       playlistEditButtons.forEach(btn=>{
         const player=parseInt(btn.dataset.player,10);
         if(!Number.isInteger(player)) return;

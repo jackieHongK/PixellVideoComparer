@@ -47,6 +47,8 @@ play (Apple ProRes, etc.).
 ## What it does
 
 - Multi-view comparison layouts: `1x2` (default), `2x2`, `1x4`, `1x3`
+- Split (overlay wipe) layouts: `Split 2/3/4` stack players at the same size and
+  position and reveal them side by side through draggable vertical divider handles
 - Drag-and-drop media loading: local files, URLs, HLS (`.m3u8`) via hls.js
 - Sync and navigation controls: play/pause, seek, frame stepping, speed control
 - Zoom + click-and-drag pan
