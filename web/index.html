@@ -7,7 +7,8 @@
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="./assets/vendor/mediainfo.umd.min.js"></script>
-  <link rel="stylesheet" href="./assets/css/comparer.css" />
+  <!-- ?v= query busts stale browser/CDN caches; bump it whenever these assets change -->
+  <link rel="stylesheet" href="./assets/css/comparer.css?v=20260818a" />
 </head>
 <body>
   <div class="file-protocol-warning" id="fileProtocolWarning" role="alert" aria-hidden="true">
@@ -646,7 +647,7 @@ npx serve -l 8765 .</pre>
         </div>
       </div>
     </div>
-  <script src="./assets/js/parse-exr.js"></script>
-  <script src="./assets/js/comparer-app.js"></script>
+  <script src="./assets/js/parse-exr.js?v=20260818a"></script>
+  <script src="./assets/js/comparer-app.js?v=20260818a"></script>
 </body>
 </html>
